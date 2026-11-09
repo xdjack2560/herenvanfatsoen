@@ -226,13 +226,14 @@ details.match[open] .chev { transform: rotate(90deg); }
 .tile.big .tile-sub { color: var(--court-ink); opacity: 0.8; }
 .tile.red { grid-column: span 3; background: var(--red); color: var(--red-ink); border-color: transparent; }
 .tile.red .tile-sub { color: var(--red-ink); opacity: 0.85; }
-@media (max-width: 820px) { .tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); } .tile, .tile.big, .tile.red { grid-column: span 1; } .tile.big { grid-column: span 2; } }
-@media (max-width: 460px) { .tiles { grid-template-columns: 1fr; } .tile, .tile.big, .tile.red { grid-column: span 1; } }
+@media (max-width: 820px) { .tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); } .tile, .tile.big, .tile.red, .tile.half { grid-column: span 1; } .tile.big { grid-column: span 2; } }
+@media (max-width: 460px) { .tiles { grid-template-columns: 1fr; } .tile, .tile.big, .tile.red, .tile.half { grid-column: span 1; } .tile.big { grid-column: span 1; } }
 .tile-title { font-family: var(--font-display); font-weight: 900; font-size: 2rem; text-transform: uppercase; line-height: 0.95; }
 .tile-sub { font-size: 0.9rem; color: var(--muted); margin-top: 6px; }
 .tile-arrow { font-family: var(--font-display); font-weight: 800; font-size: 1.1rem; letter-spacing: 0.06em; text-transform: uppercase; }
 .tile.soon { border-style: dashed; cursor: default; background: transparent; }
 .tile.soon:hover { transform: none; border-color: var(--line); }
+@media (min-width: 821px) { .tile.half { grid-column: span 3; } }
 .tile.wide { grid-column: 1 / -1; min-height: 0; flex-direction: row; align-items: center; flex-wrap: wrap; gap: 12px 28px; }
 .pill {
   display: inline-block; font-size: 0.7rem; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase;
@@ -361,7 +362,6 @@ a.sponsor-card:hover { border-color: var(--ink); }
 .pick input { position: absolute; opacity: 0; pointer-events: none; }
 .pick:has(input:checked) { border-color: var(--red); box-shadow: 0 0 0 2px var(--red); }
 .pick:has(input:focus-visible) { outline: 3px solid var(--ink); outline-offset: 2px; }
-.pick.self { opacity: 0.35; cursor: not-allowed; }
 .pick-photo { display: block; aspect-ratio: 4 / 5; max-width: 100%; border-radius: 6px; overflow: hidden; background: var(--court); }
 .pick-photo img { width: 100%; height: 100%; object-fit: cover; }
 .pick-ghost { display: grid; place-items: center; height: 100%; font-family: var(--font-display); font-weight: 900; font-size: 3rem; color: var(--court-ink); }
@@ -394,6 +394,47 @@ a.sponsor-card:hover { border-color: var(--ink); }
 .tally-n { text-align: right; font-weight: 600; font-variant-numeric: tabular-nums; }
 .note code { font-size: 0.85em; background: var(--paper); padding: 1px 5px; border-radius: 4px; }
 
+/* Ballon T'orrie */
+.tile.torrie-tile { background: var(--court); color: var(--court-ink); border-color: transparent; }
+.tile.torrie-tile .tile-sub { color: var(--court-ink); opacity: 0.8; }
+.torrie-layout { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 32px; align-items: start; }
+.torrie-aside { order: 2; position: sticky; top: calc(env(safe-area-inset-top, 0px) + 84px); display: grid; gap: 16px; }
+.torrie-main { order: 1; min-width: 0; }
+@media (max-width: 900px) {
+  .torrie-layout { grid-template-columns: 1fr; gap: 24px; }
+  .torrie-aside { order: 0; position: static; }
+}
+.compose { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 14px; }
+.compose > summary { list-style: none; display: block; text-align: center; }
+.compose > summary::-webkit-details-marker { display: none; }
+.compose[open] > summary { margin-bottom: 16px; background: transparent; color: var(--ink); border: 1px solid var(--line); }
+.torrie-form { display: grid; gap: 14px; }
+.torrie-form textarea { resize: vertical; min-height: 140px; line-height: 1.5; }
+.char-count { font-size: 0.75rem; color: var(--muted); text-align: right; font-variant-numeric: tabular-nums; }
+.stand-box { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 18px; }
+.stand-title { font-size: 1.5rem; font-weight: 900; }
+.stand-sub { margin: 4px 0 12px; font-size: 0.8125rem; color: var(--muted); }
+.stand { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; counter-reset: st; }
+.stand li { display: flex; justify-content: space-between; gap: 12px; padding: 8px 0; border-bottom: 1px solid var(--line); counter-increment: st; font-size: 0.9375rem; }
+.stand li:last-child { border-bottom: 0; }
+.stand li .stand-name::before { content: counter(st) ". "; color: var(--muted); font-variant-numeric: tabular-nums; }
+.stand li.first .stand-name { font-weight: 700; color: var(--red); }
+.stand li.empty { color: var(--muted); }
+.stand li.empty::before { content: none; }
+.stand-n { color: var(--muted); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.torrie-feed { display: grid; gap: 16px; }
+.torrie { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 20px; display: grid; gap: 14px; }
+.torrie-head { display: grid; grid-template-columns: 64px minmax(0, 1fr); gap: 14px; align-items: center; }
+.torrie-photo { width: 64px; height: 80px; border-radius: 6px; overflow: hidden; background: var(--court); color: var(--court-ink); display: grid; place-items: center; font-family: var(--font-display); font-weight: 900; font-size: 1.6rem; }
+.torrie-photo img { width: 100%; height: 100%; object-fit: cover; }
+.torrie-meta { display: grid; gap: 4px; min-width: 0; }
+.torrie-nom { font-size: 0.75rem; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--red); }
+.torrie-nom em { font-style: normal; color: var(--muted); }
+.torrie h3 { font-size: clamp(1.5rem, 2.4vw, 2rem); font-weight: 900; overflow-wrap: anywhere; }
+.torrie-by { font-size: 0.8125rem; color: var(--muted); }
+.torrie-text { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; max-width: 68ch; line-height: 1.65; }
+.btn.small { font-size: 0.8125rem; padding: 6px 12px; justify-self: start; }
+
 /* Footer */
 .footer { border-top: 1px solid var(--line); }
 .footer .wrap { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 12px; padding-block: 22px 28px; color: var(--muted); font-size: 0.875rem; }
@@ -409,6 +450,7 @@ a.sponsor-card:hover { border-color: var(--ink); }
       <a href="#spelers" data-nav="spelers">Spelers</a>
       <a href="#wedstrijden" data-nav="wedstrijden">Wedstrijden</a>
       <a href="#stemmen" data-nav="stemmen">Heer van de Match</a>
+      <a href="#torrie" data-nav="torrie">Ballon T'orrie</a>
       <a href="#sponsors" data-nav="sponsors">Sponsors</a>
       <a href="#merch" data-nav="merch">Merch</a>
       <a href="https://www.lzvcup.be/teams/detail/2730" target="_blank" rel="noopener">Competitie ↗</a>
@@ -480,12 +522,19 @@ a.sponsor-card:hover { border-color: var(--ink); }
           </div>
           <span class="tile-arrow">Bekijk →</span>
         </a>
-        <a class="tile wide motm" href="#stemmen">
+        <a class="tile half motm" href="#stemmen">
           <div>
             <div class="tile-title">Heer van de Match</div>
             <div class="tile-sub">Spelers: stem na elke wedstrijd op de beste man op het veld</div>
           </div>
           <span class="tile-arrow">Stemmen →</span>
+        </a>
+        <a class="tile half torrie-tile" href="#torrie">
+          <div>
+            <div class="tile-title">Ballon T'orrie</div>
+            <div class="tile-sub">De beste verhalen van het seizoen. Lees ze, of nomineer zelf iemand.</div>
+          </div>
+          <span class="tile-arrow">Lees de torries →</span>
         </a>
       </div>
     </div>
@@ -527,7 +576,7 @@ a.sponsor-card:hover { border-color: var(--ink); }
       <div class="page-head">
         <a class="back" href="#">← Terug naar start</a>
         <h1>Heer van de Match</h1>
-        <p>Enkel voor spelers. Stem na elke wedstrijd op wie het verschil maakte. Je kan je stem achteraf nog aanpassen: alleen je laatste stem telt.</p>
+        <p>Enkel voor spelers. Stem na elke wedstrijd op wie het verschil maakte, ook als dat jijzelf was. Je kan je stem achteraf nog aanpassen: alleen je laatste stem telt.</p>
       </div>
 
       <div class="panel gate" id="vote-gate">
@@ -587,6 +636,67 @@ a.sponsor-card:hover { border-color: var(--ink); }
       <div id="res-body" hidden>
         <div class="res-toolbar"><button class="btn ghost" type="button" id="res-refresh">Vernieuwen</button></div>
         <div class="res-list" id="res-list"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- BALLON T'ORRIE -->
+  <section class="view" data-view="torrie" hidden>
+    <div class="wrap">
+      <div class="page-head">
+        <a class="back" href="#">← Terug naar start</a>
+        <h1>Ballon T'orrie</h1>
+        <p>De prijs voor het beste verhaal van het seizoen. Schrijf op wat er gebeurde, nomineer de hoofdrolspeler en lees wat de rest instuurde. Enkel voor de ploeg.</p>
+      </div>
+
+      <div class="panel gate" id="torrie-gate">
+        <form id="torrie-gate-form" novalidate>
+          <label class="field-label" for="torrie-pw">Wachtwoord van de ploeg</label>
+          <div class="gate-row">
+            <input class="input" id="torrie-pw" type="password" autocomplete="current-password" placeholder="Wachtwoord">
+            <button class="btn" type="submit">Ga verder</button>
+          </div>
+          <p class="form-msg" id="torrie-gate-msg" role="status"></p>
+        </form>
+      </div>
+      <p class="form-msg" id="torrie-msg" role="status"></p>
+
+      <div class="torrie-layout" id="torrie-body" hidden>
+        <aside class="torrie-aside">
+          <details class="compose" id="torrie-compose">
+            <summary class="btn">+ Nieuwe torrie schrijven</summary>
+            <form class="torrie-form" id="torrie-form" novalidate>
+              <div class="field">
+                <label class="field-label" for="torrie-title">Titel</label>
+                <input class="input" id="torrie-title" type="text" maxlength="120" placeholder="bv. De derde helft in Lapaz">
+              </div>
+              <div class="field">
+                <label class="field-label" for="torrie-nominee">Genomineerde speler</label>
+                <select class="input" id="torrie-nominee"></select>
+              </div>
+              <div class="field">
+                <label class="field-label" for="torrie-text">Het verhaal</label>
+                <textarea class="input" id="torrie-text" rows="7" maxlength="4000" placeholder="Wat is er gebeurd?"></textarea>
+                <span class="char-count" id="torrie-count">0 / 4000</span>
+              </div>
+              <div class="field">
+                <label class="field-label" for="torrie-door">Ingestuurd door</label>
+                <select class="input" id="torrie-door"></select>
+              </div>
+              <button class="btn" type="submit" id="torrie-submit">Torrie plaatsen</button>
+              <p class="form-msg" id="torrie-form-msg" role="status"></p>
+            </form>
+          </details>
+          <div class="stand-box">
+            <h2 class="stand-title">Stand</h2>
+            <p class="stand-sub">Aantal torries per genomineerde</p>
+            <ol class="stand" id="torrie-stand"></ol>
+          </div>
+        </aside>
+        <div class="torrie-main">
+          <div class="res-toolbar"><button class="btn ghost" type="button" id="torrie-refresh">Vernieuwen</button></div>
+          <div class="torrie-feed" id="torrie-feed"></div>
+        </div>
       </div>
     </div>
   </section>
@@ -780,5 +890,6 @@ a.sponsor-card:hover { border-color: var(--ink); }
 })();
 </script>
 <script src="stemmen.js"></script>
+<script src="torrie.js"></script>
 </body>
 </html>

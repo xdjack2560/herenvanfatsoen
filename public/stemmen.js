@@ -76,18 +76,7 @@
       '<span class="pick-text"><span class="pick-name">' + esc(p.naam.split(" ")[0]) + '</span><span class="pick-meta">#' + p.nummer + (p.bijnaam ? " · " + esc(p.bijnaam) : "") + "</span></span></label>";
   }).join("");
 
-  function updateSelf() {
-    var me = selWho.value;
-    pick.querySelectorAll(".pick").forEach(function (el) {
-      var self = el.getAttribute("data-nr") === me, input = el.querySelector("input");
-      input.disabled = self;
-      if (self && input.checked) input.checked = false;
-      el.classList.toggle("self", self);
-      el.title = self ? "Op jezelf stemmen kan niet" : "";
-    });
-  }
-  selWho.addEventListener("change", function () { store("local", WHO_KEY, selWho.value || null); updateSelf(); });
-  updateSelf();
+  selWho.addEventListener("change", function () { store("local", WHO_KEY, selWho.value || null); });
 
   $("gate-form").addEventListener("submit", function (e) {
     e.preventDefault();
@@ -121,6 +110,7 @@
   });
 
   if (load("session", PW_KEY)) showVoteForm();
+  window.addEventListener("hashchange", function () { if (location.hash === "#stemmen" && load("session", PW_KEY)) showVoteForm(); });
 
   /* ---------- Resultaten (beheer) ---------- */
   var resGate = $("res-gate"), resBody = $("res-body"), resList = $("res-list");

@@ -16,6 +16,7 @@ window.SPELERS = [
   { nummer: 20, naam: "Gilles Berghmans",  bijnaam: "",             foto: "" },
   { nummer: 22, naam: "Len Dieltiens",     bijnaam: "Baffinator",   foto: "img/spelers/22.jpg" },
   { nummer: 93, naam: "Pieter Dieltjens",  bijnaam: "The Kenyan",   foto: "img/spelers/93.jpg" },
+  { nummer: 94, naam: "Alexander Keersmaekers", bijnaam: "",      foto: "" },
 
   { nummer: 11, naam: "PMD",               bijnaam: "",             foto: "img/spelers/coach.jpg", rol: "Coach", staf: true }
 ];
