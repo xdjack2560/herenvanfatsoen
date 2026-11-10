@@ -3,14 +3,18 @@
 //   POST /api/login       { wachtwoord }                         -> controleert het stemwachtwoord
 //   POST /api/stem        { wachtwoord, wedstrijd, kiezer, heer } -> slaat een stem op (of past ze aan)
 //   GET  /api/resultaten  header X-Beheer: <beheerwachtwoord>     -> alle stemmen
-//   GET  /api/torries     header X-Wachtwoord: <stemwachtwoord>   -> alle Ballon T'orrie-verhalen
-//   POST /api/torries     { wachtwoord, titel, genomineerde, verhaal, door } -> nieuw verhaal
-//   DELETE /api/torries/<id>  header X-Beheer: <beheerwachtwoord> -> verhaal verwijderen
+//   GET  /api/torries     headers X-Wachtwoord, X-Kiezer (optioneel) -> alle torries met up/downvotes
+//   POST /api/torries     { wachtwoord, titel, genomineerden[], verhaal, door, media[] } -> nieuwe torrie
+//   POST /api/torries/<id>/stem { wachtwoord, kiezer, waarde: 1 | -1 | 0 } -> up/downvote (0 = stem weghalen)
+//   DELETE /api/torries/<id>  header X-Beheer: <beheerwachtwoord> -> torrie verwijderen
+//   POST /api/media       header X-Wachtwoord, body = bestand      -> foto/video uploaden
+//   GET  /api/media/<key>                                         -> foto/video tonen
 //
 // Nodig in Cloudflare (Pages-project -> Settings):
 //   Binding  : D1-database met variabelenaam DB
 //   Secret   : STEM_WACHTWOORD    (het wachtwoord voor spelers)
 //   Secret   : BEHEER_WACHTWOORD  (om de resultaten te bekijken; valt terug op STEM_WACHTWOORD als het ontbreekt)
+//   Binding  : R2-bucket met variabelenaam MEDIA (optioneel, voor foto's en video's bij torries)
 
 const SCHEMA = `CREATE TABLE IF NOT EXISTS stemmen (
   wedstrijd TEXT NOT NULL,
@@ -21,13 +25,80 @@ const SCHEMA = `CREATE TABLE IF NOT EXISTS stemmen (
 )`;
 
 const SCHEMA_TORRIES = `CREATE TABLE IF NOT EXISTS torries (
-  id           INTEGER PRIMARY KEY AUTOINCREMENT,
-  titel        TEXT NOT NULL,
-  genomineerde INTEGER NOT NULL,
-  verhaal      TEXT NOT NULL,
-  door         TEXT,
-  tijd         TEXT NOT NULL
+  id            INTEGER PRIMARY KEY AUTOINCREMENT,
+  titel         TEXT NOT NULL,
+  genomineerde  INTEGER NOT NULL,
+  genomineerden TEXT,
+  verhaal       TEXT NOT NULL,
+  door          TEXT,
+  media         TEXT,
+  tijd          TEXT NOT NULL
 )`;
+
+const SCHEMA_TORRIE_STEMMEN = `CREATE TABLE IF NOT EXISTS torrie_stemmen (
+  torrie_id INTEGER NOT NULL,
+  kiezer    TEXT NOT NULL,
+  waarde    INTEGER NOT NULL,
+  tijd      TEXT NOT NULL,
+  PRIMARY KEY (torrie_id, kiezer)
+)`;
+
+const MEDIA_KEY = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.[a-z0-9]{2,4}$/;
+const MEDIA_TYPES = {
+  "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp", "image/gif": "gif",
+  "video/mp4": "mp4", "video/quicktime": "mov", "video/webm": "webm",
+};
+const MAX_IMAGE = 10 * 1048576;
+const MAX_VIDEO = 90 * 1048576;
+const MAX_MEDIA = 8;
+
+let torrieSchemaReady = false;
+async function ensureTorrieSchema(db) {
+  if (torrieSchemaReady) return;
+  await db.prepare(SCHEMA_TORRIES).run();
+  // Oudere databases missen deze kolommen nog; voeg ze toe als ze ontbreken.
+  for (const col of ["genomineerden TEXT", "media TEXT"]) {
+    try { await db.prepare("ALTER TABLE torries ADD COLUMN " + col).run(); } catch (e) {}
+  }
+  await db.prepare(SCHEMA_TORRIE_STEMMEN).run();
+  torrieSchemaReady = true;
+}
+
+function parseList(v) {
+  try { const x = JSON.parse(v); return Array.isArray(x) ? x : []; } catch (e) { return []; }
+}
+
+function torrieRow(r) {
+  const genomineerden = parseList(r.genomineerden).map(Number).filter(Number.isInteger);
+  return {
+    id: r.id, titel: r.titel, verhaal: r.verhaal, door: r.door, tijd: r.tijd,
+    genomineerden: genomineerden.length ? genomineerden : [Number(r.genomineerde)],
+    media: parseList(r.media),
+    up: Number(r.up) || 0, down: Number(r.down) || 0, mijn: Number(r.mijn) || 0,
+  };
+}
+
+async function serveMedia(bucket, key, request) {
+  const obj = await bucket.get(key, { range: request.headers, onlyIf: request.headers });
+  if (!obj) return new Response("Niet gevonden", { status: 404 });
+  const headers = new Headers();
+  obj.writeHttpMetadata(headers);
+  headers.set("etag", obj.httpEtag);
+  headers.set("accept-ranges", "bytes");
+  headers.set("cache-control", "private, max-age=31536000, immutable");
+  if (!("body" in obj) || !obj.body) return new Response(null, { status: 304, headers });
+  let status = 200;
+  if (obj.range && request.headers.has("range")) {
+    const offset = obj.range.offset !== undefined ? obj.range.offset : obj.size - obj.range.suffix;
+    const length = obj.range.length !== undefined ? obj.range.length : obj.size - offset;
+    headers.set("content-range", "bytes " + offset + "-" + (offset + length - 1) + "/" + obj.size);
+    headers.set("content-length", String(length));
+    status = 206;
+  } else {
+    headers.set("content-length", String(obj.size));
+  }
+  return new Response(request.method === "HEAD" ? null : obj.body, { status, headers });
+}
 
 function json(data, status = 200) {
   return new Response(JSON.stringify(data), {
@@ -105,50 +176,126 @@ export async function onRequest({ request, env, params }) {
     return json({ stemmen: results || [] });
   }
 
-  if (route === "torries" && method === "GET") {
+  // ---------- Ballon T'orrie ----------
+  const parts = route.split("/");
+
+  // Foto's en video's tonen. Geen wachtwoord nodig (een <img>/<video> kan geen header meesturen),
+  // maar de bestandsnamen zijn willekeurig en alleen zichtbaar voor wie ingelogd is.
+  if (parts[0] === "media" && parts.length === 2 && (method === "GET" || method === "HEAD")) {
+    if (!env.MEDIA) return json({ fout: "Opslag voor foto's en video's is niet gekoppeld." }, 503);
+    if (!MEDIA_KEY.test(parts[1])) return json({ fout: "Onbekend bestand." }, 404);
+    return serveMedia(env.MEDIA, parts[1], request);
+  }
+
+  if (parts[0] === "media" && parts.length === 1 && method === "POST") {
     if (!(await sameSecret(request.headers.get("X-Wachtwoord"), env.STEM_WACHTWOORD))) {
       return json({ fout: "Dat wachtwoord klopt niet. Log opnieuw in." }, 401);
     }
-    await env.DB.prepare(SCHEMA_TORRIES).run();
-    const { results } = await env.DB.prepare(
-      "SELECT id, titel, genomineerde, verhaal, door, tijd FROM torries ORDER BY id DESC"
-    ).all();
-    return json({ torries: results || [] });
+    if (!env.MEDIA) return json({ fout: "Foto's en video's uploaden is nog niet ingesteld op de server." }, 503);
+    const type = (request.headers.get("content-type") || "").split(";")[0].trim().toLowerCase();
+    const ext = MEDIA_TYPES[type];
+    if (!ext) return json({ fout: "Dit bestandstype wordt niet ondersteund. Gebruik een foto (JPG, PNG, WebP, GIF) of video (MP4, MOV, WebM)." }, 400);
+    const size = Number(request.headers.get("content-length") || 0);
+    const max = type.startsWith("video/") ? MAX_VIDEO : MAX_IMAGE;
+    if (size > max) return json({ fout: "Dit bestand is te groot (max " + Math.round(max / 1048576) + " MB)." }, 413);
+    const key = crypto.randomUUID() + "." + ext;
+    const obj = await env.MEDIA.put(key, request.body, { httpMetadata: { contentType: type } });
+    if (obj && obj.size > max) { await env.MEDIA.delete(key); return json({ fout: "Dit bestand is te groot." }, 413); }
+    return json({ ok: true, key, type: type.startsWith("video/") ? "video" : "foto" });
   }
 
-  if (route === "torries" && method === "POST") {
+  if (parts[0] === "torries" && parts.length === 1 && method === "GET") {
+    if (!(await sameSecret(request.headers.get("X-Wachtwoord"), env.STEM_WACHTWOORD))) {
+      return json({ fout: "Dat wachtwoord klopt niet. Log opnieuw in." }, 401);
+    }
+    await ensureTorrieSchema(env.DB);
+    const kiezer = String(request.headers.get("X-Kiezer") || "").slice(0, 60);
+    const { results } = await env.DB.prepare(
+      `SELECT t.id, t.titel, t.genomineerde, t.genomineerden, t.verhaal, t.door, t.media, t.tijd,
+              COALESCE(SUM(CASE WHEN s.waarde > 0 THEN 1 ELSE 0 END), 0) AS up,
+              COALESCE(SUM(CASE WHEN s.waarde < 0 THEN 1 ELSE 0 END), 0) AS down,
+              MAX(CASE WHEN s.kiezer = ?1 THEN s.waarde END) AS mijn
+       FROM torries t LEFT JOIN torrie_stemmen s ON s.torrie_id = t.id
+       GROUP BY t.id ORDER BY t.id DESC`
+    ).bind(kiezer).all();
+    return json({ torries: (results || []).map(torrieRow), media: !!env.MEDIA });
+  }
+
+  if (parts[0] === "torries" && parts.length === 1 && method === "POST") {
     const body = await readJson(request);
     if (!body || !(await sameSecret(body.wachtwoord, env.STEM_WACHTWOORD))) {
       return json({ fout: "Dat wachtwoord klopt niet. Log opnieuw in." }, 401);
     }
     const titel = String(body.titel || "").trim();
     const verhaal = String(body.verhaal || "").trim();
-    const door = String(body.door || "").trim().slice(0, 60) || null;
-    const genomineerde = Number(body.genomineerde);
+    const door = String(body.door || "").trim().slice(0, 60);
+    const raw = Array.isArray(body.genomineerden) ? body.genomineerden : [body.genomineerde];
+    const genomineerden = [...new Set(raw.map(Number))].filter((n) => Number.isInteger(n) && n >= 0 && n <= 999);
+    const media = (Array.isArray(body.media) ? body.media : [])
+      .filter((m) => m && MEDIA_KEY.test(String(m.key)))
+      .map((m) => ({ key: String(m.key), type: m.type === "video" ? "video" : "foto" }));
+    if (!door) return json({ fout: "Kies eerst wie je bent. Anoniem insturen kan niet." }, 400);
     if (!titel) return json({ fout: "Geef je torrie een titel." }, 400);
     if (titel.length > 120) return json({ fout: "De titel mag maximaal 120 tekens lang zijn." }, 400);
-    if (!Number.isInteger(genomineerde) || genomineerde < 0 || genomineerde > 999) return json({ fout: "Kies wie je nomineert." }, 400);
+    if (!genomineerden.length) return json({ fout: "Nomineer minstens één speler." }, 400);
+    if (genomineerden.length > 15) return json({ fout: "Je kan maximaal 15 spelers nomineren." }, 400);
     if (!verhaal) return json({ fout: "Schrijf het verhaal nog even op." }, 400);
     if (verhaal.length > 4000) return json({ fout: "Het verhaal mag maximaal 4000 tekens lang zijn." }, 400);
+    if (media.length > MAX_MEDIA) return json({ fout: "Je kan maximaal " + MAX_MEDIA + " foto's of video's toevoegen." }, 400);
 
-    await env.DB.prepare(SCHEMA_TORRIES).run();
+    await ensureTorrieSchema(env.DB);
     const tijd = new Date().toISOString();
     const r = await env.DB.prepare(
-      "INSERT INTO torries (titel, genomineerde, verhaal, door, tijd) VALUES (?1, ?2, ?3, ?4, ?5)"
-    ).bind(titel, genomineerde, verhaal, door, tijd).run();
+      "INSERT INTO torries (titel, genomineerde, genomineerden, verhaal, door, media, tijd) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)"
+    ).bind(titel, genomineerden[0], JSON.stringify(genomineerden), verhaal, door, JSON.stringify(media), tijd).run();
     const id = r && r.meta ? r.meta.last_row_id : null;
-    return json({ ok: true, torrie: { id, titel, genomineerde, verhaal, door, tijd } });
+    return json({ ok: true, torrie: { id, titel, genomineerden, verhaal, door, media, tijd, up: 0, down: 0, mijn: 0 } });
   }
 
-  if (route.startsWith("torries/") && method === "DELETE") {
+  if (parts[0] === "torries" && parts.length === 3 && parts[2] === "stem" && method === "POST") {
+    const body = await readJson(request);
+    if (!body || !(await sameSecret(body.wachtwoord, env.STEM_WACHTWOORD))) {
+      return json({ fout: "Dat wachtwoord klopt niet. Log opnieuw in." }, 401);
+    }
+    const id = Number(parts[1]);
+    const kiezer = String(body.kiezer || "").trim().slice(0, 60);
+    const waarde = Number(body.waarde);
+    if (!Number.isInteger(id)) return json({ fout: "Onbekende torrie." }, 400);
+    if (!kiezer) return json({ fout: "Kies eerst wie je bent." }, 400);
+    if (![-1, 0, 1].includes(waarde)) return json({ fout: "Ongeldige stem." }, 400);
+    await ensureTorrieSchema(env.DB);
+    const bestaat = await env.DB.prepare("SELECT id FROM torries WHERE id = ?1").bind(id).all();
+    if (!bestaat.results || !bestaat.results.length) return json({ fout: "Deze torrie bestaat niet meer." }, 404);
+    if (waarde === 0) {
+      await env.DB.prepare("DELETE FROM torrie_stemmen WHERE torrie_id = ?1 AND kiezer = ?2").bind(id, kiezer).run();
+    } else {
+      await env.DB.prepare(
+        `INSERT INTO torrie_stemmen (torrie_id, kiezer, waarde, tijd) VALUES (?1, ?2, ?3, ?4)
+         ON CONFLICT (torrie_id, kiezer) DO UPDATE SET waarde = excluded.waarde, tijd = excluded.tijd`
+      ).bind(id, kiezer, waarde, new Date().toISOString()).run();
+    }
+    const t = await env.DB.prepare(
+      `SELECT COALESCE(SUM(CASE WHEN waarde > 0 THEN 1 ELSE 0 END), 0) AS up,
+              COALESCE(SUM(CASE WHEN waarde < 0 THEN 1 ELSE 0 END), 0) AS down
+       FROM torrie_stemmen WHERE torrie_id = ?1`
+    ).bind(id).all();
+    const row = (t.results && t.results[0]) || { up: 0, down: 0 };
+    return json({ ok: true, id, up: Number(row.up), down: Number(row.down), mijn: waarde });
+  }
+
+  if (parts[0] === "torries" && parts.length === 2 && method === "DELETE") {
     const beheer = env.BEHEER_WACHTWOORD || env.STEM_WACHTWOORD;
     if (!(await sameSecret(request.headers.get("X-Beheer"), beheer))) {
       return json({ fout: "Alleen beheer kan torries verwijderen." }, 401);
     }
-    const id = Number(route.split("/")[1]);
+    const id = Number(parts[1]);
     if (!Number.isInteger(id)) return json({ fout: "Onbekende torrie." }, 400);
-    await env.DB.prepare(SCHEMA_TORRIES).run();
+    await ensureTorrieSchema(env.DB);
+    const found = await env.DB.prepare("SELECT media FROM torries WHERE id = ?1").bind(id).all();
+    const keys = found.results && found.results[0] ? parseList(found.results[0].media).map((m) => m.key).filter((k) => MEDIA_KEY.test(k)) : [];
+    await env.DB.prepare("DELETE FROM torrie_stemmen WHERE torrie_id = ?1").bind(id).run();
     await env.DB.prepare("DELETE FROM torries WHERE id = ?1").bind(id).run();
+    if (keys.length && env.MEDIA) { try { await env.MEDIA.delete(keys); } catch (e) {} }
     return json({ ok: true });
   }
 

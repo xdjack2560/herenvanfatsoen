@@ -2,6 +2,8 @@
 // Na een match: vul "score" in als [thuis, uit], zet "heer" op het rugnummer van de Heer van de Match,
 // en vul "spelers" met { nr, goals, assists }. Invallers die niet in spelers.js staan krijgen ook een "naam".
 // "k: true" = kapitein in die wedstrijd.
+// "oefen: true" = oefenmatch (telt niet mee voor de competitiecijfers).
+// "afgelast: true" = afgelaste wedstrijd. "datum: null" = datum en zaal nog te bepalen.
 window.WEDSTRIJDEN = [
   { datum: "2026-09-23", uur: "21:30", thuis: "Heren Van Fatsoen", uit: "De Groene Grasmaaiers", zaal: "Heilige Drievuldigheidscollege Leuven",
     score: [12, 7], heer: 1, spelers: [
@@ -31,9 +33,13 @@ window.WEDSTRIJDEN = [
       { nr: 9, goals: 0, assists: 0 }, { nr: 10, goals: 0, assists: 0 },
       { nr: 94, naam: "Alexander Keersmaekers", goals: 0, assists: 0 } ] },
 
-  { datum: "2026-11-09", uur: "18:30", thuis: "De Groene Grasmaaiers", uit: "Heren Van Fatsoen", zaal: "Heilige Drievuldigheidscollege Leuven" },
+  { datum: "2026-11-05", uur: "", thuis: "PinteLier", uit: "Heren Van Fatsoen", zaal: "Heilige Drievuldigheidscollege Leuven",
+    oefen: true, score: [6, 11] },
+
+  { datum: "2026-11-09", uur: "18:30", thuis: "De Groene Grasmaaiers", uit: "Heren Van Fatsoen", zaal: "Heilige Drievuldigheidscollege Leuven", afgelast: true },
   { datum: "2026-11-18", uur: "21:30", thuis: "Heren Van Fatsoen", uit: "Al Khebab II", zaal: "Heilige Drievuldigheidscollege Leuven" },
   { datum: "2026-11-26", uur: "19:30", thuis: "HouTemToe", uit: "Heren Van Fatsoen", zaal: "Heilige Drievuldigheidscollege Leuven" },
+  { datum: "2026-12-02", uur: "21:30", thuis: "Heren Van Fatsoen", uit: "FC Pintje", zaal: "Heilige Drievuldigheidscollege Leuven", oefen: true },
   { datum: "2026-12-03", uur: "18:30", thuis: "Cristal Palace", uit: "Heren Van Fatsoen", zaal: "Rijschool Leuven" },
   { datum: "2026-12-16", uur: "21:30", thuis: "Heren Van Fatsoen", uit: "Paralympiakos", zaal: "Heilige Drievuldigheidscollege Leuven" },
   { datum: "2027-02-10", uur: "22:00", thuis: "Paralympiakos", uit: "Heren Van Fatsoen", zaal: "Redingenhof Leuven" },
@@ -42,5 +48,8 @@ window.WEDSTRIJDEN = [
   { datum: "2027-03-16", uur: "21:30", thuis: "Collygang", uit: "Heren Van Fatsoen", zaal: "Heilige Drievuldigheidscollege Leuven" },
   { datum: "2027-03-24", uur: "22:00", thuis: "Al Khebab II", uit: "Heren Van Fatsoen", zaal: "Heilig Hart Heverlee" },
   { datum: "2027-04-14", uur: "21:30", thuis: "Heren Van Fatsoen", uit: "Pepe's FC", zaal: "Heilige Drievuldigheidscollege Leuven" },
-  { datum: "2027-04-22", uur: "22:00", thuis: "AC Klinkerwerken", uit: "Heren Van Fatsoen", zaal: "Wijnpers Leuven" }
+  { datum: "2027-04-22", uur: "22:00", thuis: "AC Klinkerwerken", uit: "Heren Van Fatsoen", zaal: "Wijnpers Leuven" },
+
+  // Inhaalwedstrijd voor de afgelaste match van 9 november
+  { datum: null, uur: "", thuis: "De Groene Grasmaaiers", uit: "Heren Van Fatsoen", zaal: "", inhaal: true }
 ];

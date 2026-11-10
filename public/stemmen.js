@@ -31,16 +31,16 @@
     catch (e) { return new Date().toISOString().slice(0, 10); }
   }
   var matches = (window.WEDSTRIJDEN || [])
-    .filter(function (m) { return m.datum <= vandaag(); })
+    .filter(function (m) { return m.datum && !m.afgelast && m.datum <= vandaag(); })
     .sort(function (a, b) { return b.datum.localeCompare(a.datum); });
   var matchByDate = {};
-  (window.WEDSTRIJDEN || []).forEach(function (m) { matchByDate[m.datum] = m; });
+  (window.WEDSTRIJDEN || []).forEach(function (m) { if (m.datum && !m.afgelast) matchByDate[m.datum] = m; });
 
   function matchLabel(datum) {
     var m = matchByDate[datum], d = new Date(datum + "T12:00:00");
     var when = DAGEN[d.getDay()] + " " + d.getDate() + " " + MAANDEN[d.getMonth()];
     if (!m) return when;
-    return when + " · tegen " + (m.thuis === US ? m.uit : m.thuis);
+    return when + " · tegen " + (m.thuis === US ? m.uit : m.thuis) + (m.oefen ? " (oefenmatch)" : "");
   }
 
   function api(path, opts) {
@@ -110,7 +110,11 @@
   });
 
   if (load("session", PW_KEY)) showVoteForm();
-  window.addEventListener("hashchange", function () { if (location.hash === "#stemmen" && load("session", PW_KEY)) showVoteForm(); });
+  window.addEventListener("hashchange", function () {
+    if (location.hash !== "#stemmen") return;
+    var w = load("local", WHO_KEY); if (w && selWho.querySelector('option[value="' + w + '"]')) selWho.value = w;
+    if (load("session", PW_KEY)) showVoteForm();
+  });
 
   /* ---------- Resultaten (beheer) ---------- */
   var resGate = $("res-gate"), resBody = $("res-body"), resList = $("res-list");
