@@ -29,6 +29,12 @@
   function personByKey(k) { for (var i = 0; i < everyone.length; i++) if (keyOf(everyone[i]) === k) return everyone[i]; return null; }
   function first(n) { var p = byNr[n]; return p ? p.naam.split(" ")[0] : "#" + n; }
 
+  // Past de pagina niet bij dit script (oude versie uit de cache)? Dan niet vastlopen maar vragen om te vernieuwen.
+  if (!$("torrie-me") || !$("torrie-nominees") || !$("torrie-cancel")) {
+    var m = $("torrie-msg") || $("torrie-gate-msg");
+    if (m) { m.textContent = "Er is een nieuwe versie van de site. Vernieuw de pagina (op gsm: trek de pagina naar beneden of herlaad hem)."; m.className = "form-msg err"; }
+    return;
+  }
   var gate = $("torrie-gate"), body = $("torrie-body"), feed = $("torrie-feed"), stand = $("torrie-stand");
   var form = $("torrie-form"), compose = $("torrie-compose"), meSel = $("torrie-me"), whoBox = $("torrie-whoami");
   var torries = [], mediaEnabled = true, sortMode = load("local", SORT_KEY) === "nieuw" ? "nieuw" : "beste", files = [];

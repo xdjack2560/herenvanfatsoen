@@ -1,0 +1,7 @@
+# Altijd de nieuwste versie van de pagina en de scripts ophalen (voorkomt een oude/nieuwe mix na een update).
+/
+  Cache-Control: no-cache
+/index.html
+  Cache-Control: no-cache
+/*.js
+  Cache-Control: no-cache
