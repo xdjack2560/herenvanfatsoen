@@ -32,6 +32,7 @@
   var gate = $("torrie-gate"), body = $("torrie-body"), feed = $("torrie-feed"), stand = $("torrie-stand");
   var form = $("torrie-form"), compose = $("torrie-compose"), meSel = $("torrie-me"), whoBox = $("torrie-whoami");
   var torries = [], mediaEnabled = true, sortMode = load("local", SORT_KEY) === "nieuw" ? "nieuw" : "beste", files = [];
+  var editing = null, kept = []; // torrie die bewerkt wordt + de foto's/video's die al bij die torrie horen
 
   /* ---------- Wie ben jij? ---------- */
   meSel.innerHTML = '<option value="">Kies je naam</option>' + everyone.map(function (p) {
@@ -48,7 +49,11 @@
   }
   var saved = load("local", WHO_KEY);
   if (saved && personByKey(saved)) meSel.value = saved;
-  meSel.addEventListener("change", function () { store("local", WHO_KEY, meSel.value || null); syncMe(); loadTorries(); });
+  meSel.addEventListener("change", function () {
+    store("local", WHO_KEY, meSel.value || null); syncMe();
+    if (editing && (!me() || editing.door !== me().naam)) resetForm();
+    loadTorries();
+  });
   syncMe();
 
   /* ---------- Formulier ---------- */
@@ -67,7 +72,11 @@
     return { mp4: "video/mp4", mov: "video/quicktime", webm: "video/webm", jpg: "image/jpeg", jpeg: "image/jpeg", png: "image/png", webp: "image/webp", gif: "image/gif", heic: "image/heic" }[ext] || "";
   }
   function renderPreview() {
-    $("torrie-preview").innerHTML = files.map(function (f, i) {
+    $("torrie-preview").innerHTML = kept.map(function (m, i) {
+      var src = "/api/media/" + encodeURIComponent(m.key);
+      var inner = m.type === "video" ? '<video src="' + src + '" muted preload="metadata"></video>' : '<img src="' + src + '" alt="">';
+      return '<div class="mp">' + inner + '<button type="button" data-rm-old="' + i + '" aria-label="Verwijder deze ' + (m.type === "video" ? "video" : "foto") + '">×</button></div>';
+    }).join("") + files.map(function (f, i) {
       var t = guessType(f), url = f._url || (f._url = URL.createObjectURL(f));
       var inner = t.indexOf("image/") === 0 ? '<img src="' + url + '" alt="">' : t.indexOf("video/") === 0 ? '<video src="' + url + '" muted></video>' : esc(f.name);
       return '<div class="mp">' + inner + '<button type="button" data-rm="' + i + '" aria-label="Verwijder ' + esc(f.name) + '">×</button></div>';
@@ -80,12 +89,14 @@
       var f = added[i], t = guessType(f);
       if (t.indexOf("image/") !== 0 && t.indexOf("video/") !== 0) { msg(out, f.name + " is geen foto of video.", "err"); continue; }
       if (t.indexOf("video/") === 0 && f.size > MAX_VIDEO) { msg(out, f.name + " is te groot (" + Math.round(f.size / 1048576) + " MB). Video's mogen max 90 MB zijn.", "err"); continue; }
-      if (files.length >= MAX_FILES) { msg(out, "Je kan maximaal " + MAX_FILES + " foto's of video's toevoegen.", "err"); break; }
+      if (kept.length + files.length >= MAX_FILES) { msg(out, "Je kan maximaal " + MAX_FILES + " foto's of video's toevoegen.", "err"); break; }
       files.push(f);
     }
     renderPreview();
   });
   $("torrie-preview").addEventListener("click", function (e) {
+    var o = e.target.closest("[data-rm-old]");
+    if (o) { kept.splice(Number(o.getAttribute("data-rm-old")), 1); renderPreview(); return; }
     var b = e.target.closest("[data-rm]"); if (!b) return;
     var f = files.splice(Number(b.getAttribute("data-rm")), 1)[0];
     if (f && f._url) URL.revokeObjectURL(f._url);
@@ -118,6 +129,32 @@
     }, Promise.resolve()).then(function () { return keys; });
   }
 
+  function resetForm() {
+    editing = null; kept = [];
+    $("torrie-title").value = ""; area.value = ""; counter.textContent = "0 / 4000";
+    form.querySelectorAll('input[name="nom"]').forEach(function (i) { i.checked = false; });
+    files.forEach(function (f) { if (f._url) URL.revokeObjectURL(f._url); }); files = []; renderPreview();
+    $("torrie-compose-title").textContent = "+ Nieuwe torrie schrijven";
+    $("torrie-submit").textContent = "Torrie plaatsen";
+    $("torrie-cancel").hidden = true;
+    compose.classList.remove("editing");
+  }
+  function startEdit(t) {
+    resetForm();
+    editing = t; kept = (t.media || []).slice();
+    $("torrie-title").value = t.titel; area.value = t.verhaal; counter.textContent = area.value.length + " / 4000";
+    (t.genomineerden || []).forEach(function (n) { var i = $("nom-" + n); if (i) i.checked = true; });
+    renderPreview();
+    $("torrie-compose-title").textContent = "Torrie bewerken";
+    $("torrie-submit").textContent = "Wijzigingen opslaan";
+    $("torrie-cancel").hidden = false;
+    compose.classList.add("editing"); compose.open = true;
+    msg($("torrie-form-msg"), "");
+    compose.scrollIntoView({ behavior: "smooth", block: "start" });
+    $("torrie-title").focus({ preventScroll: true });
+  }
+  $("torrie-cancel").addEventListener("click", function () { resetForm(); msg($("torrie-form-msg"), ""); });
+
   form.addEventListener("submit", function (e) {
     e.preventDefault();
     var out = $("torrie-form-msg"), btn = $("torrie-submit"), p = me();
@@ -128,18 +165,21 @@
     if (!noms.length) { msg(out, "Nomineer minstens één speler.", "err"); return; }
     if (!verhaal) { msg(out, "Schrijf het verhaal nog even op.", "err"); area.focus(); return; }
     btn.disabled = true;
-    (files.length ? uploadAll(out) : Promise.resolve([])).then(function (media) {
-      msg(out, "Torrie wordt geplaatst…");
-      return api("/api/torries", {
-        method: "POST", headers: { "content-type": "application/json" },
-        body: JSON.stringify({ wachtwoord: load("session", PW_KEY) || "", titel: titel, genomineerden: noms, verhaal: verhaal, door: p.naam, media: media })
+    var ed = editing;
+    (files.length ? uploadAll(out) : Promise.resolve([])).then(function (nieuw) {
+      msg(out, ed ? "Wijzigingen opslaan…" : "Torrie wordt geplaatst…");
+      return api(ed ? "/api/torries/" + ed.id : "/api/torries", {
+        method: ed ? "PUT" : "POST", headers: { "content-type": "application/json" },
+        body: JSON.stringify({ wachtwoord: load("session", PW_KEY) || "", titel: titel, genomineerden: noms, verhaal: verhaal, door: p.naam, media: kept.concat(nieuw) })
       });
     }).then(function (d) {
-      torries.unshift(d.torrie); render();
-      $("torrie-title").value = ""; area.value = ""; counter.textContent = "0 / 4000";
-      form.querySelectorAll('input[name="nom"]').forEach(function (i) { i.checked = false; });
-      files.forEach(function (f) { if (f._url) URL.revokeObjectURL(f._url); }); files = []; renderPreview();
-      msg(out, "Torrie geplaatst.", "ok");
+      if (ed) {
+        ["titel", "genomineerden", "verhaal", "media", "bewerkt"].forEach(function (k) { ed[k] = d.torrie[k]; });
+      } else {
+        torries.unshift(d.torrie);
+      }
+      render(); resetForm();
+      msg(out, ed ? "Wijzigingen opgeslagen." : "Torrie geplaatst.", "ok");
     }).catch(function (err) {
       if (err.status === 401) { store("session", PW_KEY, null); gate.hidden = false; body.hidden = true; msg($("torrie-gate-msg"), err.message, "err"); }
       else msg(out, err.message, "err");
@@ -172,7 +212,7 @@
     }).join("") + "</div>";
   }
   function render() {
-    var isAdmin = !!load("session", ADMIN_KEY), canVote = !!me();
+    var isAdmin = !!load("session", ADMIN_KEY), mine = me(), canVote = !!mine;
     var list = sorted();
     if (!list.length) {
       feed.innerHTML = '<div class="panel"><h2>Nog geen torries</h2><p>Wees de eerste: schrijf op wat er gebeurde en nomineer de hoofdrolspelers.</p></div>';
@@ -189,15 +229,17 @@
           '<header class="torrie-head"><div class="torrie-photos">' + photos + "</div>" +
           '<div class="torrie-meta"><span class="torrie-nom">Genomineerd: ' + names + "</span>" +
           "<h3>" + esc(t.titel) + "</h3>" +
-          '<span class="torrie-by">' + (t.door ? "Ingestuurd door " + esc(t.door) : "Anoniem ingestuurd") + " · " + when(t.tijd) + "</span></div></header>" +
+          '<span class="torrie-by">' + (t.door ? "Ingestuurd door " + esc(t.door) : "Anoniem ingestuurd") + " · " + when(t.tijd) + (t.bewerkt ? " · bewerkt" : "") + "</span></div></header>" +
           '<p class="torrie-text">' + esc(t.verhaal) + "</p>" + mediaHtml(t) +
           '<div class="torrie-foot"><div class="votes">' +
             '<button type="button" class="vote up' + (t.mijn > 0 ? " on" : "") + '" data-vote="1" aria-label="Upvote" aria-pressed="' + (t.mijn > 0) + '"' + dis + '>▲ ' + (t.up || 0) + "</button>" +
             '<span class="score-n" title="Score">' + score(t) + "</span>" +
             '<button type="button" class="vote down' + (t.mijn < 0 ? " on" : "") + '" data-vote="-1" aria-label="Downvote" aria-pressed="' + (t.mijn < 0) + '"' + dis + '>▼ ' + (t.down || 0) + "</button>" +
           "</div>" +
-          (isAdmin ? '<button class="btn ghost small" type="button" data-delete="' + t.id + '">Verwijderen</button>' : "") +
-          "</div></article>";
+          '<div class="torrie-actions">' +
+            (mine && t.door === mine.naam ? '<button class="btn ghost small" type="button" data-edit="' + t.id + '">Bewerken</button>' : "") +
+            (isAdmin ? '<button class="btn ghost small" type="button" data-delete="' + t.id + '">Verwijderen</button>' : "") +
+          "</div></div></article>";
       }).join("");
     }
 
@@ -249,6 +291,12 @@
   });
 
   feed.addEventListener("click", function (e) {
+    var ed = e.target.closest("[data-edit]");
+    if (ed) {
+      var et = torries.filter(function (x) { return x.id === Number(ed.getAttribute("data-edit")); })[0];
+      if (et) startEdit(et);
+      return;
+    }
     var v = e.target.closest("[data-vote]");
     if (v) {
       var card = v.closest(".torrie"), id = Number(card.getAttribute("data-id"));
@@ -269,7 +317,11 @@
     if (b.getAttribute("data-confirm") !== "1") { b.setAttribute("data-confirm", "1"); b.textContent = "Zeker? Klik nogmaals om te verwijderen"; return; }
     b.disabled = true;
     api("/api/torries/" + b.getAttribute("data-delete"), { method: "DELETE", headers: { "X-Beheer": load("session", ADMIN_KEY) || "" } })
-      .then(function () { var id = Number(b.getAttribute("data-delete")); torries = torries.filter(function (t) { return t.id !== id; }); render(); })
+      .then(function () {
+        var id = Number(b.getAttribute("data-delete"));
+        if (editing && editing.id === id) resetForm();
+        torries = torries.filter(function (t) { return t.id !== id; }); render();
+      })
       .catch(function (err) { b.disabled = false; b.textContent = err.message; });
   });
 

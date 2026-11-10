@@ -457,6 +457,10 @@ a.sponsor-card:hover { border-color: var(--ink); }
 .media-preview .mp { position: relative; width: 64px; height: 64px; border-radius: 6px; overflow: hidden; background: var(--paper); display: grid; place-items: center; font-size: 0.7rem; color: var(--muted); text-align: center; }
 .media-preview .mp img, .media-preview .mp video { width: 100%; height: 100%; object-fit: cover; }
 .media-preview .mp button { position: absolute; top: 2px; right: 2px; width: 20px; height: 20px; border-radius: 50%; border: 0; background: rgba(0,0,0,0.7); color: #fff; cursor: pointer; font-size: 12px; line-height: 1; }
+.form-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.form-actions .btn { flex: 1 1 auto; }
+.compose.editing { border: 2px solid var(--red); }
+.torrie-actions { display: flex; gap: 8px; flex-wrap: wrap; }
 .by-line { margin: 0; font-size: 0.875rem; color: var(--muted); }
 .torrie-toolbar { justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
 .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
@@ -717,7 +721,7 @@ a.sponsor-card:hover { border-color: var(--ink); }
       <div class="torrie-layout">
         <aside class="torrie-aside">
           <details class="compose" id="torrie-compose">
-            <summary class="btn">+ Nieuwe torrie schrijven</summary>
+            <summary class="btn" id="torrie-compose-title">+ Nieuwe torrie schrijven</summary>
             <form class="torrie-form" id="torrie-form" novalidate>
               <div class="field">
                 <label class="field-label" for="torrie-title">Titel</label>
@@ -739,7 +743,10 @@ a.sponsor-card:hover { border-color: var(--ink); }
                 <span class="char-count" id="torrie-media-note">Foto's worden automatisch verkleind. Video's mogen max 90 MB zijn.</span>
               </div>
               <p class="by-line" id="torrie-by">Ingestuurd door: <strong>kies eerst wie je bent</strong></p>
-              <button class="btn" type="submit" id="torrie-submit">Torrie plaatsen</button>
+              <div class="form-actions">
+                <button class="btn" type="submit" id="torrie-submit">Torrie plaatsen</button>
+                <button class="btn ghost" type="button" id="torrie-cancel" hidden>Annuleren</button>
+              </div>
               <p class="form-msg" id="torrie-form-msg" role="status"></p>
             </form>
           </details>

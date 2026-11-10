@@ -6,6 +6,7 @@
 //   GET  /api/torries     headers X-Wachtwoord, X-Kiezer (optioneel) -> alle torries met up/downvotes
 //   POST /api/torries     { wachtwoord, titel, genomineerden[], verhaal, door, media[] } -> nieuwe torrie
 //   POST /api/torries/<id>/stem { wachtwoord, kiezer, waarde: 1 | -1 | 0 } -> up/downvote (0 = stem weghalen)
+//   PUT  /api/torries/<id> { wachtwoord, door, titel, genomineerden[], verhaal, media[] } -> eigen torrie bewerken
 //   DELETE /api/torries/<id>  header X-Beheer: <beheerwachtwoord> -> torrie verwijderen
 //   POST /api/media       header X-Wachtwoord, body = bestand      -> foto/video uploaden
 //   GET  /api/media/<key>                                         -> foto/video tonen
@@ -32,7 +33,8 @@ const SCHEMA_TORRIES = `CREATE TABLE IF NOT EXISTS torries (
   verhaal       TEXT NOT NULL,
   door          TEXT,
   media         TEXT,
-  tijd          TEXT NOT NULL
+  tijd          TEXT NOT NULL,
+  bewerkt       TEXT
 )`;
 
 const SCHEMA_TORRIE_STEMMEN = `CREATE TABLE IF NOT EXISTS torrie_stemmen (
@@ -57,11 +59,32 @@ async function ensureTorrieSchema(db) {
   if (torrieSchemaReady) return;
   await db.prepare(SCHEMA_TORRIES).run();
   // Oudere databases missen deze kolommen nog; voeg ze toe als ze ontbreken.
-  for (const col of ["genomineerden TEXT", "media TEXT"]) {
+  for (const col of ["genomineerden TEXT", "media TEXT", "bewerkt TEXT"]) {
     try { await db.prepare("ALTER TABLE torries ADD COLUMN " + col).run(); } catch (e) {}
   }
   await db.prepare(SCHEMA_TORRIE_STEMMEN).run();
   torrieSchemaReady = true;
+}
+
+// Controleert de velden van een torrie. Geeft { fout } of { data } terug.
+function parseTorrie(body) {
+  const titel = String(body.titel || "").trim();
+  const verhaal = String(body.verhaal || "").trim();
+  const door = String(body.door || "").trim().slice(0, 60);
+  const raw = Array.isArray(body.genomineerden) ? body.genomineerden : [body.genomineerde];
+  const genomineerden = [...new Set(raw.map(Number))].filter((n) => Number.isInteger(n) && n >= 0 && n <= 999);
+  const media = (Array.isArray(body.media) ? body.media : [])
+    .filter((m) => m && MEDIA_KEY.test(String(m.key)))
+    .map((m) => ({ key: String(m.key), type: m.type === "video" ? "video" : "foto" }));
+  if (!door) return { fout: "Kies eerst wie je bent. Anoniem insturen kan niet." };
+  if (!titel) return { fout: "Geef je torrie een titel." };
+  if (titel.length > 120) return { fout: "De titel mag maximaal 120 tekens lang zijn." };
+  if (!genomineerden.length) return { fout: "Nomineer minstens één speler." };
+  if (genomineerden.length > 15) return { fout: "Je kan maximaal 15 spelers nomineren." };
+  if (!verhaal) return { fout: "Schrijf het verhaal nog even op." };
+  if (verhaal.length > 4000) return { fout: "Het verhaal mag maximaal 4000 tekens lang zijn." };
+  if (media.length > MAX_MEDIA) return { fout: "Je kan maximaal " + MAX_MEDIA + " foto's of video's toevoegen." };
+  return { data: { titel, verhaal, door, genomineerden, media } };
 }
 
 function parseList(v) {
@@ -71,7 +94,7 @@ function parseList(v) {
 function torrieRow(r) {
   const genomineerden = parseList(r.genomineerden).map(Number).filter(Number.isInteger);
   return {
-    id: r.id, titel: r.titel, verhaal: r.verhaal, door: r.door, tijd: r.tijd,
+    id: r.id, titel: r.titel, verhaal: r.verhaal, door: r.door, tijd: r.tijd, bewerkt: r.bewerkt || null,
     genomineerden: genomineerden.length ? genomineerden : [Number(r.genomineerde)],
     media: parseList(r.media),
     up: Number(r.up) || 0, down: Number(r.down) || 0, mijn: Number(r.mijn) || 0,
@@ -211,7 +234,7 @@ export async function onRequest({ request, env, params }) {
     await ensureTorrieSchema(env.DB);
     const kiezer = String(request.headers.get("X-Kiezer") || "").slice(0, 60);
     const { results } = await env.DB.prepare(
-      `SELECT t.id, t.titel, t.genomineerde, t.genomineerden, t.verhaal, t.door, t.media, t.tijd,
+      `SELECT t.id, t.titel, t.genomineerde, t.genomineerden, t.verhaal, t.door, t.media, t.tijd, t.bewerkt,
               COALESCE(SUM(CASE WHEN s.waarde > 0 THEN 1 ELSE 0 END), 0) AS up,
               COALESCE(SUM(CASE WHEN s.waarde < 0 THEN 1 ELSE 0 END), 0) AS down,
               MAX(CASE WHEN s.kiezer = ?1 THEN s.waarde END) AS mijn
@@ -226,22 +249,9 @@ export async function onRequest({ request, env, params }) {
     if (!body || !(await sameSecret(body.wachtwoord, env.STEM_WACHTWOORD))) {
       return json({ fout: "Dat wachtwoord klopt niet. Log opnieuw in." }, 401);
     }
-    const titel = String(body.titel || "").trim();
-    const verhaal = String(body.verhaal || "").trim();
-    const door = String(body.door || "").trim().slice(0, 60);
-    const raw = Array.isArray(body.genomineerden) ? body.genomineerden : [body.genomineerde];
-    const genomineerden = [...new Set(raw.map(Number))].filter((n) => Number.isInteger(n) && n >= 0 && n <= 999);
-    const media = (Array.isArray(body.media) ? body.media : [])
-      .filter((m) => m && MEDIA_KEY.test(String(m.key)))
-      .map((m) => ({ key: String(m.key), type: m.type === "video" ? "video" : "foto" }));
-    if (!door) return json({ fout: "Kies eerst wie je bent. Anoniem insturen kan niet." }, 400);
-    if (!titel) return json({ fout: "Geef je torrie een titel." }, 400);
-    if (titel.length > 120) return json({ fout: "De titel mag maximaal 120 tekens lang zijn." }, 400);
-    if (!genomineerden.length) return json({ fout: "Nomineer minstens één speler." }, 400);
-    if (genomineerden.length > 15) return json({ fout: "Je kan maximaal 15 spelers nomineren." }, 400);
-    if (!verhaal) return json({ fout: "Schrijf het verhaal nog even op." }, 400);
-    if (verhaal.length > 4000) return json({ fout: "Het verhaal mag maximaal 4000 tekens lang zijn." }, 400);
-    if (media.length > MAX_MEDIA) return json({ fout: "Je kan maximaal " + MAX_MEDIA + " foto's of video's toevoegen." }, 400);
+    const parsed = parseTorrie(body);
+    if (parsed.fout) return json({ fout: parsed.fout }, 400);
+    const { titel, verhaal, door, genomineerden, media } = parsed.data;
 
     await ensureTorrieSchema(env.DB);
     const tijd = new Date().toISOString();
@@ -250,6 +260,32 @@ export async function onRequest({ request, env, params }) {
     ).bind(titel, genomineerden[0], JSON.stringify(genomineerden), verhaal, door, JSON.stringify(media), tijd).run();
     const id = r && r.meta ? r.meta.last_row_id : null;
     return json({ ok: true, torrie: { id, titel, genomineerden, verhaal, door, media, tijd, up: 0, down: 0, mijn: 0 } });
+  }
+
+  if (parts[0] === "torries" && parts.length === 2 && method === "PUT") {
+    const body = await readJson(request);
+    if (!body || !(await sameSecret(body.wachtwoord, env.STEM_WACHTWOORD))) {
+      return json({ fout: "Dat wachtwoord klopt niet. Log opnieuw in." }, 401);
+    }
+    const id = Number(parts[1]);
+    if (!Number.isInteger(id)) return json({ fout: "Onbekende torrie." }, 400);
+    const parsed = parseTorrie(body);
+    if (parsed.fout) return json({ fout: parsed.fout }, 400);
+    const { titel, verhaal, door, genomineerden, media } = parsed.data;
+    await ensureTorrieSchema(env.DB);
+    const found = await env.DB.prepare("SELECT door, media FROM torries WHERE id = ?1").bind(id).all();
+    const oud = found.results && found.results[0];
+    if (!oud) return json({ fout: "Deze torrie bestaat niet meer." }, 404);
+    if (!oud.door || oud.door !== door) return json({ fout: "Je kan alleen je eigen torries bewerken." }, 403);
+    const bewerkt = new Date().toISOString();
+    await env.DB.prepare(
+      "UPDATE torries SET titel = ?1, genomineerde = ?2, genomineerden = ?3, verhaal = ?4, media = ?5, bewerkt = ?6 WHERE id = ?7"
+    ).bind(titel, genomineerden[0], JSON.stringify(genomineerden), verhaal, JSON.stringify(media), bewerkt, id).run();
+    // Foto's en video's die uit de torrie gehaald zijn, ook uit de opslag verwijderen.
+    const blijft = new Set(media.map((m) => m.key));
+    const weg = parseList(oud.media).map((m) => m.key).filter((k) => MEDIA_KEY.test(k) && !blijft.has(k));
+    if (weg.length && env.MEDIA) { try { await env.MEDIA.delete(weg); } catch (e) {} }
+    return json({ ok: true, torrie: { id, titel, genomineerden, verhaal, door, media, bewerkt } });
   }
 
   if (parts[0] === "torries" && parts.length === 3 && parts[2] === "stem" && method === "POST") {
