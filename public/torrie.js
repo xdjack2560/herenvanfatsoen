@@ -238,9 +238,9 @@
           '<span class="torrie-by">' + (t.door ? "Ingestuurd door " + esc(t.door) : "Anoniem ingestuurd") + " · " + when(t.tijd) + (t.bewerkt ? " · bewerkt" : "") + "</span></div></header>" +
           '<p class="torrie-text">' + esc(t.verhaal) + "</p>" + mediaHtml(t) +
           '<div class="torrie-foot"><div class="votes">' +
-            '<button type="button" class="vote up' + (t.mijn > 0 ? " on" : "") + '" data-vote="1" aria-label="Upvote" aria-pressed="' + (t.mijn > 0) + '"' + dis + '>▲ ' + (t.up || 0) + "</button>" +
+            '<button type="button" class="tvote up' + (t.mijn > 0 ? " on" : "") + '" data-vote="1" aria-label="Upvote" aria-pressed="' + (t.mijn > 0) + '"' + dis + '>▲ ' + (t.up || 0) + "</button>" +
             '<span class="score-n" title="Score">' + score(t) + "</span>" +
-            '<button type="button" class="vote down' + (t.mijn < 0 ? " on" : "") + '" data-vote="-1" aria-label="Downvote" aria-pressed="' + (t.mijn < 0) + '"' + dis + '>▼ ' + (t.down || 0) + "</button>" +
+            '<button type="button" class="tvote down' + (t.mijn < 0 ? " on" : "") + '" data-vote="-1" aria-label="Downvote" aria-pressed="' + (t.mijn < 0) + '"' + dis + '>▼ ' + (t.down || 0) + "</button>" +
           "</div>" +
           '<div class="torrie-actions">' +
             (mine && t.door === mine.naam ? '<button class="btn ghost small" type="button" data-edit="' + t.id + '">Bewerken</button>' : "") +
@@ -309,7 +309,7 @@
       var t = torries.filter(function (x) { return x.id === id; })[0];
       if (!t || !me()) return;
       var want = Number(v.getAttribute("data-vote")), waarde = t.mijn === want ? 0 : want;
-      card.querySelectorAll(".vote").forEach(function (b) { b.disabled = true; });
+      card.querySelectorAll(".tvote").forEach(function (b) { b.disabled = true; });
       api("/api/torries/" + id + "/stem", {
         method: "POST", headers: { "content-type": "application/json" },
         body: JSON.stringify({ wachtwoord: load("session", PW_KEY) || "", kiezer: meSel.value, waarde: waarde })
