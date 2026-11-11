@@ -27,7 +27,7 @@
   function when(iso) { var d = new Date(iso); return isNaN(d) ? "" : d.getDate() + " " + MAANDEN[d.getMonth()] + " " + d.getFullYear(); }
   function keyOf(p) { return p.staf ? "staf:" + p.naam : String(p.nummer); }
   function personByKey(k) { for (var i = 0; i < everyone.length; i++) if (keyOf(everyone[i]) === k) return everyone[i]; return null; }
-  function first(n) { var p = byNr[n]; return p ? p.naam.split(" ")[0] : "#" + n; }
+  function first(n) { var p = byNr[n]; return p ? naamVan(p, true) : "#" + n; }
 
   // Past de pagina niet bij dit script (oude versie uit de cache)? Dan niet vastlopen maar vragen om te vernieuwen.
   if (!$("torrie-me") || !$("torrie-nominees") || !$("torrie-cancel")) {
@@ -42,16 +42,16 @@
 
   /* ---------- Wie ben jij? ---------- */
   meSel.innerHTML = '<option value="">Kies je naam</option>' + everyone.map(function (p) {
-    return '<option value="' + esc(keyOf(p)) + '">' + esc(p.staf ? p.naam + " (" + (p.rol || "staf") + ")" : "#" + p.nummer + " " + p.naam) + "</option>";
+    return '<option value="' + esc(keyOf(p)) + '">' + esc(p.staf ? naamVan(p) + " (" + (p.rol || "staf") + ")" : "#" + p.nummer + " " + naamVan(p)) + "</option>";
   }).join("");
   function me() { return meSel.value ? personByKey(meSel.value) : null; }
   function syncMe() {
     var p = me();
     whoBox.classList.toggle("need", !p);
     $("torrie-me-note").textContent = p
-      ? "Je stemt en schrijft als " + p.naam + ". Ben je dat niet? Kies dan je eigen naam."
+      ? "Je stemt en schrijft als " + naamVan(p) + ". Ben je dat niet? Kies dan je eigen naam."
       : "Kies eerst je naam. Daarmee stem je en stuur je torries in, en je kan maar één keer per torrie stemmen.";
-    $("torrie-by").innerHTML = "Ingestuurd door: <strong>" + (p ? esc(p.naam) : "kies eerst wie je bent (bovenaan)") + "</strong>";
+    $("torrie-by").innerHTML = "Ingestuurd door: <strong>" + (p ? esc(naamVan(p)) : "kies eerst wie je bent (bovenaan)") + "</strong>";
   }
   var saved = load("local", WHO_KEY);
   if (saved && personByKey(saved)) meSel.value = saved;
@@ -65,7 +65,7 @@
   /* ---------- Formulier ---------- */
   $("torrie-nominees").innerHTML = players.map(function (p) {
     var img = p.foto ? '<img src="' + esc(p.foto) + '" alt="" loading="lazy">' : '<span class="nom-ghost">' + p.nummer + "</span>";
-    return '<label class="nom" title="' + esc(p.naam) + '"><input type="checkbox" name="nom" id="nom-' + p.nummer + '" value="' + p.nummer + '">' + img + '<span class="nm">' + esc(p.naam.split(" ")[0]) + "</span></label>";
+    return '<label class="nom" title="' + esc(p.naam) + '"><input type="checkbox" name="nom" id="nom-' + p.nummer + '" value="' + p.nummer + '">' + img + '<span class="nm">' + esc(naamVan(p, true)) + "</span></label>";
   }).join("");
   try { if (window.matchMedia("(min-width: 900px)").matches) compose.open = true; } catch (e) {}
 
@@ -229,13 +229,13 @@
           var p = byNr[n];
           return "<span>" + (p && p.foto ? '<img src="' + esc(p.foto) + '" alt="" loading="lazy">' : n) + "</span>";
         }).join("");
-        var names = noms.map(function (n) { var p = byNr[n]; return esc(p ? p.naam : "#" + n) + (p && p.bijnaam ? ' <em>“' + esc(p.bijnaam) + "”</em>" : ""); }).join(", ");
+        var names = noms.map(function (n) { var p = byNr[n]; return esc(p ? naamVan(p) : "#" + n) + (p && p.bijnaam ? ' <em>“' + esc(p.bijnaam) + "”</em>" : ""); }).join(", ");
         var dis = canVote ? "" : ' disabled title="Kies bovenaan eerst wie je bent"';
         return '<article class="torrie" data-id="' + t.id + '">' +
           '<header class="torrie-head"><div class="torrie-photos">' + photos + "</div>" +
           '<div class="torrie-meta"><span class="torrie-nom">Genomineerd: ' + names + "</span>" +
           "<h3>" + esc(t.titel) + "</h3>" +
-          '<span class="torrie-by">' + (t.door ? "Ingestuurd door " + esc(t.door) : "Anoniem ingestuurd") + " · " + when(t.tijd) + (t.bewerkt ? " · bewerkt" : "") + "</span></div></header>" +
+          '<span class="torrie-by">' + (t.door ? "Ingestuurd door " + esc(naamVanTekst(t.door)) : "Anoniem ingestuurd") + " · " + when(t.tijd) + (t.bewerkt ? " · bewerkt" : "") + "</span></div></header>" +
           '<p class="torrie-text">' + esc(t.verhaal) + "</p>" + mediaHtml(t) +
           '<div class="torrie-foot"><div class="votes">' +
             '<button type="button" class="tvote up' + (t.mijn > 0 ? " on" : "") + '" data-vote="1" aria-label="Upvote" aria-pressed="' + (t.mijn > 0) + '"' + dis + '>▲ ' + (t.up || 0) + "</button>" +
@@ -260,7 +260,7 @@
     stand.innerHTML = ranked.length
       ? ranked.map(function (n, i) {
           var p = byNr[n];
-          return "<li" + (i === 0 ? ' class="first"' : "") + '><span class="stand-name">' + esc(p ? p.naam : "#" + n) + '</span><span class="stand-n"><b>' + agg[n].pts + " pt</b> · " + agg[n].n + " torrie" + (agg[n].n === 1 ? "" : "s") + "</span></li>";
+          return "<li" + (i === 0 ? ' class="first"' : "") + '><span class="stand-name">' + esc(p ? naamVan(p) : "#" + n) + '</span><span class="stand-n"><b>' + agg[n].pts + " pt</b> · " + agg[n].n + " torrie" + (agg[n].n === 1 ? "" : "s") + "</span></li>";
         }).join("")
       : '<li class="empty">Nog geen nominaties.</li>';
 

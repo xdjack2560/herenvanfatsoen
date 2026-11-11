@@ -859,8 +859,8 @@ a.sponsor-card:hover { border-color: var(--ink); }
   </div>
 </footer>
 
-<script src="spelers.js?v=202611110801"></script>
-<script src="wedstrijden.js?v=202611110801"></script>
+<script src="spelers.js?v=202611111525"></script>
+<script src="wedstrijden.js?v=202611111525"></script>
 <script>
 (function () {
   // Spelerslijst opbouwen
@@ -892,7 +892,7 @@ a.sponsor-card:hover { border-color: var(--ink); }
       '<div class="player-photo">' + photo + scoreTiles(p.nummer) + "</div>" +
       "<div>" +
         (p.bijnaam ? '<div class="player-nick">' + esc(p.bijnaam) + "</div>" : "") +
-        '<div class="player-name">#' + p.nummer + " " + esc(p.naam) + "</div>" +
+        '<div class="player-name">#' + p.nummer + " " + esc(naamVan(p)) + "</div>" +
         (p.rol ? '<div class="player-role">' + esc(p.rol) + "</div>" : "") +
         (p.staf ? "" : (function (s) {
           return '<div class="pstats"><div><b>' + s.m + '</b><span>Match' + (s.m === 1 ? "" : "en") + '</span></div><div><b>' + s.g + '</b><span>Goals</span></div><div><b>' + s.a + '</b><span>Assists</span></div><div class="' + (s.h ? "hvdm-n" : "") + '" title="Heer van de Match"><b>' + s.h + "</b><span>★ HvdM</span></div></div>";
@@ -913,7 +913,7 @@ a.sponsor-card:hover { border-color: var(--ink); }
     var best = rows.length ? rows[0].s[seasonSort] : 0;
     seasonTable.querySelector("tbody").innerHTML = rows.map(function (r) {
       function td(k) { var v = r.s[k]; return '<td class="num' + (k === seasonSort && v && v === best ? " top" : "") + (v ? "" : " zero") + '">' + v + "</td>"; }
-      return '<tr><td class="nr">' + r.p.nummer + "</td><td>" + esc(r.p.naam) + (r.p.bijnaam ? ' <span class="zero">· ' + esc(r.p.bijnaam) + "</span>" : "") + "</td>" + td("m") + td("g") + td("a") + td("h") + "</tr>";
+      return '<tr><td class="nr">' + r.p.nummer + "</td><td>" + esc(naamVan(r.p)) + (r.p.bijnaam ? ' <span class="zero">· ' + esc(r.p.bijnaam) + "</span>" : "") + "</td>" + td("m") + td("g") + td("a") + td("h") + "</tr>";
     }).join("");
     seasonTable.querySelectorAll("th button").forEach(function (b) { b.classList.toggle("on", b.getAttribute("data-sort") === seasonSort); });
   }
@@ -958,13 +958,13 @@ a.sponsor-card:hover { border-color: var(--ink); }
     var ours = m.thuis === US ? m.score[0] : m.score[1], theirs = m.thuis === US ? m.score[1] : m.score[0];
     return { ours: ours, theirs: theirs, r: ours > theirs ? "w" : ours < theirs ? "v" : "g" };
   }
-  function playerName(s) { return s.naam || (byNr[s.nr] ? byNr[s.nr].naam : "#" + s.nr); }
+  function playerName(s) { return s.naam || (byNr[s.nr] ? naamVan(byNr[s.nr]) : "#" + s.nr); }
 
   function detailHtml(m) {
     var h = byNr[m.heer];
     var hvdm = h
       ? '<div class="hvdm">' + (h.foto ? '<img src="' + esc(h.foto) + '" alt="' + esc(h.naam) + '" loading="lazy">' : '<div class="hvdm-ghost">' + h.nummer + "</div>") +
-        '<div><div class="hvdm-label">Heer van de Match</div><div class="hvdm-name">' + esc(h.naam.split(" ")[0]) + "</div>" +
+        '<div><div class="hvdm-label">Heer van de Match</div><div class="hvdm-name">' + esc(naamVan(h, true)) + "</div>" +
         (h.bijnaam ? '<div class="hvdm-nick">“' + esc(h.bijnaam) + "” · #" + h.nummer + "</div>" : '<div class="hvdm-nick">#' + h.nummer + "</div>") + "</div></div>"
       : "<div></div>";
     var rows = (m.spelers || []).slice().sort(function (a, b) { return (b.goals - a.goals) || (b.assists - a.assists) || (a.nr - b.nr); });
@@ -1046,7 +1046,7 @@ a.sponsor-card:hover { border-color: var(--ink); }
   show();
 })();
 </script>
-<script src="stemmen.js?v=202611110801"></script>
-<script src="torrie.js?v=202611110801"></script>
+<script src="stemmen.js?v=202611111525"></script>
+<script src="torrie.js?v=202611111525"></script>
 </body>
 </html>

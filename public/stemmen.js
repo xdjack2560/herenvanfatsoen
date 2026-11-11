@@ -13,7 +13,7 @@
 
   function key(p) { return p.staf ? "staf:" + p.naam : String(p.nummer); }
   function voterName(k) {
-    for (var i = 0; i < voters.length; i++) if (key(voters[i]) === k) return voters[i].naam;
+    for (var i = 0; i < voters.length; i++) if (key(voters[i]) === k) return naamVan(voters[i]);
     return k.indexOf("staf:") === 0 ? k.slice(5) : "#" + k;
   }
   function esc(t) { return String(t).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
@@ -65,7 +65,7 @@
     ? matches.map(function (m) { return '<option value="' + m.datum + '">' + esc(matchLabel(m.datum)) + "</option>"; }).join("")
     : '<option value="">Nog geen gespeelde wedstrijden</option>';
   selWho.innerHTML = '<option value="">Kies je naam</option>' +
-    voters.map(function (p) { return '<option value="' + esc(key(p)) + '">' + esc(p.staf ? p.naam + " (" + (p.rol || "staf") + ")" : "#" + p.nummer + " " + p.naam) + "</option>"; }).join("");
+    voters.map(function (p) { return '<option value="' + esc(key(p)) + '">' + esc(p.staf ? naamVan(p) + " (" + (p.rol || "staf") + ")" : "#" + p.nummer + " " + naamVan(p)) + "</option>"; }).join("");
   var rememberedWho = load("local", WHO_KEY);
   if (rememberedWho) selWho.value = rememberedWho;
 
@@ -73,7 +73,7 @@
     var photo = p.foto ? '<img src="' + esc(p.foto) + '" alt="" loading="lazy">' : '<span class="pick-ghost">' + p.nummer + "</span>";
     return '<label class="pick" data-nr="' + p.nummer + '"><input type="radio" name="heer" id="heer-' + p.nummer + '" value="' + p.nummer + '">' +
       '<span class="pick-photo">' + photo + "</span>" +
-      '<span class="pick-text"><span class="pick-name">' + esc(p.naam.split(" ")[0]) + '</span><span class="pick-meta">#' + p.nummer + (p.bijnaam ? " · " + esc(p.bijnaam) : "") + "</span></span></label>";
+      '<span class="pick-text"><span class="pick-name">' + esc(naamVan(p, true)) + '</span><span class="pick-meta">#' + p.nummer + (p.bijnaam ? " · " + esc(p.bijnaam) : "") + "</span></span></label>";
   }).join("");
 
   selWho.addEventListener("change", function () { store("local", WHO_KEY, selWho.value || null); });
@@ -102,7 +102,7 @@
       method: "POST", headers: { "content-type": "application/json" },
       body: JSON.stringify({ wachtwoord: load("session", PW_KEY) || "", wedstrijd: selMatch.value, kiezer: selWho.value, heer: heer })
     }).then(function () {
-      msg(out, "Stem opgeslagen: " + (p ? p.naam : "#" + heer) + " voor " + matchLabel(selMatch.value) + ". Opnieuw stemmen vervangt je vorige stem.", "ok");
+      msg(out, "Stem opgeslagen: " + (p ? naamVan(p) : "#" + heer) + " voor " + matchLabel(selMatch.value) + ". Opnieuw stemmen vervangt je vorige stem.", "ok");
     }).catch(function (err) {
       if (err.status === 401) { store("session", PW_KEY, null); form.hidden = true; gate.hidden = false; msg($("gate-msg"), err.message, "err"); }
       else msg(out, err.message, "err");
@@ -138,8 +138,8 @@
       var missing = expected.filter(function (k) { return !voted[k]; });
 
       var leaderText = leaders.length > 1
-        ? "Gelijkstand tussen " + leaders.map(function (n) { return byNr[n] ? byNr[n].naam.split(" ")[0] : "#" + n; }).join(" en ")
-        : (byNr[leaders[0]] ? byNr[leaders[0]].naam : "#" + leaders[0]);
+        ? "Gelijkstand tussen " + leaders.map(function (n) { return byNr[n] ? naamVan(byNr[n], true) : "#" + n; }).join(" en ")
+        : (byNr[leaders[0]] ? naamVan(byNr[leaders[0]]) : "#" + leaders[0]);
 
       return '<article class="res-card">' +
         '<header class="res-head"><div><h3>' + esc(matchLabel(datum)) + '</h3><span class="res-count">' + votes.length + " stem" + (votes.length === 1 ? "" : "men") + "</span></div>" +
@@ -147,7 +147,7 @@
         '<div class="res-grid"><div><h4>Telling</h4><ol class="tally">' +
           ranked.map(function (n) {
             var p = byNr[n];
-            return '<li><span class="tally-name">#' + n + " " + esc(p ? p.naam : "") + '</span><span class="tally-bar"><span style="width:' + Math.round(tally[n] / max * 100) + '%"></span></span><span class="tally-n">' + tally[n] + "</span></li>";
+            return '<li><span class="tally-name">#' + n + " " + esc(p ? naamVan(p) : "") + '</span><span class="tally-bar"><span style="width:' + Math.round(tally[n] / max * 100) + '%"></span></span><span class="tally-n">' + tally[n] + "</span></li>";
           }).join("") + "</ol>" +
           (missing.length ? '<p class="note">Nog niet gestemd: ' + esc(missing.map(voterName).join(", ")) + "</p>" : '<p class="note">Iedereen die meespeelde heeft gestemd.</p>') +
           (leaders.length === 1 ? '<p class="note">Op de site zetten: vul <code>heer: ' + leaders[0] + "</code> in bij deze match in wedstrijden.js.</p>" : "") +
@@ -155,7 +155,7 @@
         '<div><h4>Wie stemde op wie</h4><div class="stats-wrap"><table class="stats"><thead><tr><th>Stemmer</th><th>Heer van de Match</th></tr></thead><tbody>' +
           votes.slice().sort(function (a, b) { return voterName(a.kiezer).localeCompare(voterName(b.kiezer)); }).map(function (s) {
             var p = byNr[s.heer];
-            return "<tr><td>" + esc(voterName(s.kiezer)) + "</td><td>#" + s.heer + " " + esc(p ? p.naam : "") + "</td></tr>";
+            return "<tr><td>" + esc(voterName(s.kiezer)) + "</td><td>#" + s.heer + " " + esc(p ? naamVan(p) : "") + "</td></tr>";
           }).join("") + "</tbody></table></div></div></div></article>";
     }).join("");
   }
