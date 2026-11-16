@@ -264,7 +264,7 @@
         }).join("")
       : '<li class="empty">Nog geen nominaties.</li>';
 
-    document.querySelectorAll(".seg-btn").forEach(function (b) { b.classList.toggle("on", b.getAttribute("data-sort") === sortMode); });
+    document.querySelectorAll(".seg-btn[data-sort]").forEach(function (b) { b.classList.toggle("on", b.getAttribute("data-sort") === sortMode); });
   }
 
   function loadTorries() {
@@ -292,7 +292,7 @@
       .then(function () { btn.disabled = false; });
   });
 
-  document.querySelectorAll(".seg-btn").forEach(function (b) {
+  document.querySelectorAll(".seg-btn[data-sort]").forEach(function (b) {
     b.addEventListener("click", function () { sortMode = b.getAttribute("data-sort"); store("local", SORT_KEY, sortMode); resort(); render(); });
   });
 

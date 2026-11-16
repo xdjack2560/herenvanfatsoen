@@ -9,6 +9,7 @@
 //   PUT  /api/torries/<id> { wachtwoord, door, titel, genomineerden[], verhaal, media[] } -> eigen torrie bewerken
 //   DELETE /api/torries/<id>  header X-Beheer: <beheerwachtwoord> -> torrie verwijderen
 //   POST /api/media       header X-Wachtwoord, body = bestand      -> foto/video uploaden
+//   GET  /api/competitie                                         -> klassement + alle wedstrijden van de reeks (van lzvcup.be)
 //   GET  /api/media/<key>                                         -> foto/video tonen
 //
 // Nodig in Cloudflare (Pages-project -> Settings):
@@ -148,13 +149,88 @@ function vandaag() {
   return new Intl.DateTimeFormat("sv-SE", { timeZone: "Europe/Brussels" }).format(new Date());
 }
 
+// ---------- Competitie (live van lzvcup.be) ----------
+// Haalt de reekspagina van LZV Cup op en zet het klassement en alle wedstrijden om naar JSON.
+// Pas LZV_REEKS aan als de ploeg van reeks verandert (zie de link "Wedstrijden & Stand" op lzvcup.be).
+const LZV_BASE = "https://www.lzvcup.be";
+const LZV_REEKS = "/results/5/10/3A";
+const LZV_CACHE_SECONDEN = 900; // max. 1 keer per kwartier opnieuw ophalen
+
+const ENT = { "&nbsp;": " ", "&amp;": "&", "&#039;": "'", "&quot;": '"', "&lt;": "<", "&gt;": ">", "&eacute;": "é", "&euml;": "ë", "&egrave;": "è" };
+function txt(s) {
+  return String(s || "").replace(/<[^>]+>/g, " ").replace(/&[a-z#0-9]+;/gi, (e) => ENT[e] ?? (e.startsWith("&#") ? String.fromCharCode(parseInt(e.slice(2), 10)) : " "))
+    .replace(/\s+/g, " ").trim();
+}
+function parseReeks(html) {
+  const stand = [], wedstrijden = [];
+  const iStand = html.indexOf('id="stand"');
+  const items = [...html.matchAll(/<li class="item([^"]*)">([\s\S]*?)<\/li>/g)];
+  for (const m of items) {
+    const cls = m[1], body = m[2], pos = m.index;
+    if (cls.includes("item-list-header")) continue;
+    const cols = [...body.matchAll(/<div class="item-col([^"]*)">([\s\S]*?)<\/div>\s*(?=<div class="item-col|<\/div>\s*$)/g)];
+    if (iStand >= 0 && pos > iStand) {
+      const team = body.match(/href="\/teams\/detail\/(\d+)">([\s\S]*?)<\/a>/);
+      const nums = [...body.matchAll(/<div class="item-col col-1 text-end(?: d-none d-lg-block)?">\s*([-\d.]+)\s*<\/div>/g)].map((x) => x[1]);
+      const p = body.match(/<div class="col-2 text-end text-nowrap">\s*(\d+)\s*<\/div>/);
+      if (!team || nums.length < 8) continue;
+      stand.push({ pos: +(p ? p[1] : stand.length + 1), id: +team[1], ploeg: txt(team[2]),
+        gespeeld: +nums[0], winst: +nums[1], gelijk: +nums[2], verlies: +nums[3], dg: +nums[4], dt: +nums[5], ds: +nums[6], punten: +nums[7] });
+      continue;
+    }
+    const when = body.match(/<span class="d-none d-lg-block">\s*([\s\S]*?)\s*<\/span>/);
+    const teams = [...body.matchAll(/href="\/teams\/detail\/(\d+)">([\s\S]*?)<\/a>/g)];
+    if (!when || teams.length < 2) continue;
+    const d = txt(when[1]).match(/(\d{2})\/(\d{2})\/(\d{4})(?:\s+(\d{2})u(\d{2}))?/);
+    const scoreCol = body.match(/<div class="item-col col-lg-1 col text-center text-nowrap">([\s\S]*?)<\/div>/);
+    const scoreTxt = txt(scoreCol ? scoreCol[1] : "");
+    const sc = scoreTxt.match(/^(\d+)\s*-\s*(\d+)$/);
+    const hall = body.match(/href="\/sportshalls\/detail\/\d+">([\s\S]*?)<\/a>/);
+    const det = body.match(/href="\/results\/detail\/(\d+)"/);
+    wedstrijden.push({
+      datum: d ? `${d[3]}-${d[2]}-${d[1]}` : null, uur: d && d[4] ? `${d[4]}:${d[5]}` : "",
+      thuis: txt(teams[0][2]), thuisId: +teams[0][1], uit: txt(teams[1][2]), uitId: +teams[1][1],
+      score: sc ? [+sc[1], +sc[2]] : null, opmerking: sc || scoreTxt === "-" ? "" : scoreTxt,
+      zaal: hall ? txt(hall[1]) : "", id: det ? +det[1] : null,
+    });
+  }
+  const seen = new Set();
+  const uniek = wedstrijden.filter((w) => { const k = w.datum + w.uur + w.thuisId + w.uitId; if (seen.has(k)) return false; seen.add(k); return true; })
+    .sort((a, b) => (a.datum + a.uur).localeCompare(b.datum + b.uur));
+  return { stand, wedstrijden: uniek };
+}
+
+async function competitie(request, ctx) {
+  const cache = typeof caches !== "undefined" ? caches.default : null;
+  const cacheKey = new Request(new URL("/api/competitie", request.url).toString());
+  if (cache) { const hit = await cache.match(cacheKey); if (hit) return hit; }
+  let html;
+  try {
+    const r = await fetch(LZV_BASE + LZV_REEKS, { headers: { "user-agent": "herenvanfatsoen.be (ploegwebsite)" }, cf: { cacheTtl: LZV_CACHE_SECONDEN, cacheEverything: true } });
+    if (!r.ok) throw new Error("status " + r.status);
+    html = await r.text();
+  } catch (e) {
+    return json({ fout: "LZV Cup is nu niet bereikbaar. Probeer het later opnieuw." }, 502);
+  }
+  const data = parseReeks(html);
+  if (!data.stand.length && !data.wedstrijden.length) return json({ fout: "De gegevens van LZV Cup konden niet gelezen worden." }, 502);
+  const res = new Response(JSON.stringify({ ...data, bron: LZV_BASE + LZV_REEKS, opgehaald: new Date().toISOString() }), {
+    headers: { "content-type": "application/json; charset=utf-8", "cache-control": "public, max-age=" + LZV_CACHE_SECONDEN },
+  });
+  if (cache) { const put = cache.put(cacheKey, res.clone()); if (ctx && ctx.waitUntil) ctx.waitUntil(put); else await put; }
+  return res;
+}
+
 async function readJson(request) {
   try { return await request.json(); } catch { return null; }
 }
 
-export async function onRequest({ request, env, params }) {
+export async function onRequest({ request, env, params, waitUntil }) {
   const route = (params.route || []).join("/");
   const method = request.method;
+
+  // Openbaar: klassement en wedstrijden van de hele reeks
+  if (route === "competitie" && method === "GET") return competitie(request, { waitUntil });
 
   if (!env.STEM_WACHTWOORD) return json({ fout: "Het stemwachtwoord is nog niet ingesteld op de server." }, 503);
   if (!env.DB) return json({ fout: "De database is nog niet gekoppeld aan de site." }, 503);

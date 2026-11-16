@@ -497,6 +497,41 @@ a.sponsor-card:hover { border-color: var(--ink); }
 .score-n { font-family: var(--font-display); font-weight: 900; font-size: 1.35rem; min-width: 2.2ch; text-align: center; font-variant-numeric: tabular-nums; }
 .stand-n b { color: var(--ink); }
 
+/* Competitie */
+.comp-table-wrap { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 8px 16px; margin-bottom: 40px; }
+.comp-stand td, .comp-stand th { white-space: nowrap; }
+.comp-stand td.pos { color: var(--muted); }
+.comp-stand td.team { font-weight: 600; white-space: normal; }
+.comp-stand td.pts { font-family: var(--font-display); font-weight: 900; font-size: 1.15rem; }
+.comp-stand tr.us td { background: color-mix(in srgb, var(--red) 10%, transparent); }
+.comp-stand tr.us td.team, .comp-stand tr.us td.pts { color: var(--red); }
+.comp-stand tr.us td:first-child { box-shadow: inset 3px 0 0 var(--red); }
+.comp-stand .pos { width: 36px; }
+@media (max-width: 560px) { .comp-stand .hide-s { display: none; } .comp-table-wrap { padding: 4px 10px; } }
+.comp-head { display: flex; justify-content: space-between; align-items: center; gap: 12px 20px; flex-wrap: wrap; margin-bottom: 14px; }
+.comp-head .list-head { margin: 0; }
+.comp-filters { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+.comp-filters .input { width: auto; min-width: 200px; padding: 8px 10px; font-size: 0.9375rem; }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+.comp-matches { display: grid; gap: 18px; }
+.comp-day h3 { font-family: var(--font-body); text-transform: none; font-size: 0.8125rem; font-weight: 600; letter-spacing: 0.08em; color: var(--muted); margin: 0 0 6px; text-transform: uppercase; }
+.comp-list { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+.comp-row { display: grid; grid-template-columns: 54px minmax(0, 1fr) 72px minmax(0, 1fr) minmax(0, 0.9fr); gap: 12px; align-items: center; padding: 10px 14px; border-top: 1px solid var(--line); font-size: 0.9375rem; }
+.comp-row:first-child { border-top: 0; }
+.comp-row .t { font-size: 0.8125rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+.comp-row .h { text-align: right; min-width: 0; overflow-wrap: anywhere; }
+.comp-row .a { min-width: 0; overflow-wrap: anywhere; }
+.comp-row .s { text-align: center; font-family: var(--font-display); font-weight: 900; font-size: 1.2rem; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.comp-row .s.open { font-family: var(--font-body); font-weight: 500; font-size: 0.8125rem; color: var(--muted); }
+.comp-row .z { font-size: 0.8125rem; color: var(--muted); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.comp-row .win { font-weight: 700; }
+.comp-row.us { background: color-mix(in srgb, var(--red) 7%, transparent); }
+.comp-row .us-name { color: var(--red); font-weight: 700; }
+@media (max-width: 640px) {
+  .comp-row { grid-template-columns: 44px minmax(0, 1fr) 58px minmax(0, 1fr); gap: 8px; padding: 10px; font-size: 0.875rem; }
+  .comp-row .z { grid-column: 2 / -1; text-align: center; margin-top: -4px; }
+}
+
 /* Footer */
 .footer { border-top: 1px solid var(--line); }
 .footer .wrap { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 12px; padding-block: 22px 28px; color: var(--muted); font-size: 0.875rem; }
@@ -515,7 +550,7 @@ a.sponsor-card:hover { border-color: var(--ink); }
       <a href="#torrie" data-nav="torrie">Ballon T'orrie</a>
       <a href="#sponsors" data-nav="sponsors">Sponsors</a>
       <a href="#merch" data-nav="merch">Merch</a>
-      <a href="https://www.lzvcup.be/teams/detail/2730" target="_blank" rel="noopener">Competitie ↗</a>
+      <a href="#competitie" data-nav="competitie">Competitie</a>
     </nav>
   </div>
 </header>
@@ -563,12 +598,12 @@ a.sponsor-card:hover { border-color: var(--ink); }
           </div>
           <span class="tile-arrow">Naar de kalender →</span>
         </a>
-        <a class="tile" href="https://www.lzvcup.be/teams/detail/2730" target="_blank" rel="noopener">
+        <a class="tile" href="#competitie">
           <div>
             <div class="tile-title">Competitie</div>
-            <div class="tile-sub">Stand en statistieken op LZV Cup</div>
+            <div class="tile-sub" id="tile-stand">Klassement en wedstrijden van de hele reeks</div>
           </div>
-          <span class="tile-arrow">Naar lzvcup.be ↗</span>
+          <span class="tile-arrow">Naar het klassement →</span>
         </a>
         <a class="tile" href="#sponsors">
           <div>
@@ -627,6 +662,43 @@ a.sponsor-card:hover { border-color: var(--ink); }
       </div>
       <h2 class="players-sub">Staf</h2>
       <div class="players" id="staff"></div>
+    </div>
+  </section>
+
+  <!-- COMPETITIE -->
+  <section class="view" data-view="competitie" hidden>
+    <div class="wrap">
+      <div class="page-head">
+        <a class="back" href="#">← Terug naar start</a>
+        <h1>Competitie</h1>
+        <p>3e Klasse A Leuven Studenten · klassement en alle wedstrijden van de reeks, automatisch overgenomen van <a href="https://www.lzvcup.be/results/5/10/3A" target="_blank" rel="noopener">LZV Cup ↗</a>. <span id="comp-updated"></span></p>
+      </div>
+      <p class="form-msg" id="comp-msg" role="status"></p>
+
+      <h2 class="list-head">Klassement</h2>
+      <div class="stats-wrap comp-table-wrap">
+        <table class="stats comp-stand" id="comp-stand">
+          <thead><tr>
+            <th class="num pos">#</th><th>Ploeg</th>
+            <th class="num" title="Gespeeld">M</th><th class="num" title="Gewonnen">W</th><th class="num" title="Gelijk">G</th><th class="num" title="Verloren">V</th>
+            <th class="num hide-s" title="Doelpunten gemaakt">DV</th><th class="num hide-s" title="Doelpunten tegen">DT</th><th class="num" title="Doelsaldo">+/−</th><th class="num" title="Punten">Ptn</th>
+          </tr></thead>
+          <tbody><tr><td colspan="10" class="zero">Klassement laden…</td></tr></tbody>
+        </table>
+      </div>
+
+      <div class="comp-head">
+        <h2 class="list-head">Wedstrijden</h2>
+        <div class="comp-filters">
+          <label class="field-label sr" for="comp-team">Ploeg</label>
+          <select class="input" id="comp-team"><option value="">Alle ploegen</option></select>
+          <div class="seg" role="group" aria-label="Welke wedstrijden">
+            <button type="button" class="seg-btn on" data-when="komend">Komend</button>
+            <button type="button" class="seg-btn" data-when="gespeeld">Gespeeld</button>
+          </div>
+        </div>
+      </div>
+      <div class="comp-matches" id="comp-matches"></div>
     </div>
   </section>
 
@@ -859,8 +931,8 @@ a.sponsor-card:hover { border-color: var(--ink); }
   </div>
 </footer>
 
-<script src="spelers.js?v=202611121351"></script>
-<script src="wedstrijden.js?v=202611121351"></script>
+<script src="spelers.js?v=202611161709"></script>
+<script src="wedstrijden.js?v=202611161709"></script>
 <script>
 (function () {
   // Spelerslijst opbouwen
@@ -1046,7 +1118,8 @@ a.sponsor-card:hover { border-color: var(--ink); }
   show();
 })();
 </script>
-<script src="stemmen.js?v=202611121351"></script>
-<script src="torrie.js?v=202611121351"></script>
+<script src="stemmen.js?v=202611161709"></script>
+<script src="competitie.js?v=202611161709"></script>
+<script src="torrie.js?v=202611161709"></script>
 </body>
 </html>
