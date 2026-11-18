@@ -4,12 +4,13 @@
 - `functions/api/[[route]].js` — servercode voor Heer van de Match en Ballon T'orrie
 
 ## Na een wedstrijd bijwerken
-Open `public/wedstrijden.js` en vul bij de match in (extra opties: `oefen: true`, `afgelast: true`, `datum: null` voor nog te plannen):
-- `score: [thuis, uit]`
-- `heer:` het rugnummer van de Heer van de Match (staat op de resultatenpagina)
-- `spelers:` per speler `{ nr, goals, assists }`
+Niets meer nodig voor competitiematchen: de site haalt score, datum, zaal en wedstrijdblad (goals/assists)
+automatisch van lzvcup.be (`public/lzv-sync.js` + `/api/wedstrijden`). De Heer van de Match wordt 2 dagen
+na de match automatisch de winnaar van de stemming (bij gelijkstand: niemand, vul dan zelf `heer` in).
 
-Opslaan (commit) in GitHub, en Cloudflare zet de nieuwe versie binnen een minuut online.
+In `public/wedstrijden.js` vul je alleen nog in wat niet op LZV staat of wat je wil overschrijven:
+oefenmatchen (`oefen: true`), afgelaste matchen (`afgelast: true`), of een eigen `score`, `spelers` of `heer`
+(wat hier staat, gaat altijd voor op LZV).
 
 ## Instellingen in Cloudflare (Pages-project → Settings)
 - Build: framework preset "None", build command leeg, build output directory `public`

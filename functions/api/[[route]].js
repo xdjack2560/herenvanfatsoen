@@ -9,6 +9,7 @@
 //   PUT  /api/torries/<id> { wachtwoord, door, titel, genomineerden[], verhaal, media[] } -> eigen torrie bewerken
 //   DELETE /api/torries/<id>  header X-Beheer: <beheerwachtwoord> -> torrie verwijderen
 //   POST /api/media       header X-Wachtwoord, body = bestand      -> foto/video uploaden
+//   GET  /api/wedstrijden                                        -> onze competitiematchen van lzvcup.be, met wedstrijdbladen en Heer van de Match
 //   GET  /api/competitie                                         -> klassement + alle wedstrijden van de reeks (van lzvcup.be)
 //   GET  /api/media/<key>                                         -> foto/video tonen
 //
@@ -200,6 +201,79 @@ function parseReeks(html) {
   return { stand, wedstrijden: uniek };
 }
 
+const LZV_TEAM_ID = 2730; // Heren Van Fatsoen op lzvcup.be
+const HVDM_NA_DAGEN = 2; // Heer van de Match wordt pas getoond zoveel dagen na de match (stemming afgelopen)
+
+// Wedstrijdblad van één ploeg uit een LZV-detailpagina: [{ nr, naam, goals, assists, k }]
+function parseWedstrijdblad(html, ploeg) {
+  const t = html.replace(/<(script|style)[\s\S]*?<\/\1>/g, "");
+  // Elke ploeg heeft een eigen tabel met kop "Nr | Naam | Goals | Assists"; zoek die na de ploegnaam.
+  const parts = t.split(/<table/i).slice(1).map((x) => "<table" + x.split(/<\/table>/i)[0]);
+  const all = [];
+  for (const tab of parts) {
+    const before = t.slice(0, t.indexOf(tab));
+    const heads = [...before.matchAll(/>([^<>]{2,80})</g)].map((m) => txt(m[1])).filter(Boolean);
+    const owner = heads.length ? heads[heads.length - 1] : "";
+    const rows = [...tab.matchAll(/<tr[\s\S]*?<\/tr>/gi)].map((r) => [...r[0].matchAll(/<t[dh][^>]*>([\s\S]*?)<\/t[dh]>/gi)].map((c) => c[1]));
+    const spelers = [];
+    for (const cells of rows) {
+      if (cells.length < 4) continue;
+      const nr = parseInt(txt(cells[0]), 10);
+      if (!Number.isInteger(nr)) continue;
+      const naamRaw = cells[1];
+      spelers.push({ nr, naam: txt(naamRaw).replace(/\s*\(K\)\s*$/, ""), goals: parseInt(txt(cells[2]), 10) || 0, assists: parseInt(txt(cells[3]), 10) || 0, k: /\(K\)/.test(txt(naamRaw)) });
+    }
+    all.push({ owner, spelers });
+  }
+  const hit = all.find((x) => x.owner === ploeg) || null;
+  return hit ? hit.spelers : null;
+}
+
+async function lzvFetch(url, ttl) {
+  const r = await fetch(url, { headers: { "user-agent": "herenvanfatsoen.be (ploegwebsite)" }, cf: { cacheTtl: ttl, cacheEverything: true } });
+  if (!r.ok) throw new Error("LZV antwoordde met status " + r.status);
+  return r.text();
+}
+
+// Heer van de Match per wedstrijddatum uit de stemming (alleen bij een duidelijke winnaar).
+async function hvdmUitStemmen(db) {
+  const out = {};
+  if (!db) return out;
+  try {
+    const { results } = await db.prepare("SELECT wedstrijd, heer, COUNT(*) AS n FROM stemmen GROUP BY wedstrijd, heer").all();
+    const per = {};
+    (results || []).forEach((r) => { (per[r.wedstrijd] = per[r.wedstrijd] || []).push({ heer: Number(r.heer), n: Number(r.n) }); });
+    for (const d of Object.keys(per)) {
+      const l = per[d].sort((a, b) => b.n - a.n);
+      if (l.length && (l.length === 1 || l[0].n > l[1].n)) out[d] = { heer: l[0].heer, stemmen: l[0].n };
+    }
+  } catch (e) { /* tabel bestaat nog niet */ }
+  return out;
+}
+
+async function onzeWedstrijden(request, env, ctx) {
+  const cache = typeof caches !== "undefined" ? caches.default : null;
+  const cacheKey = new Request(new URL("/api/wedstrijden", request.url).toString());
+  if (cache) { const hit = await cache.match(cacheKey); if (hit) return hit; }
+  let reeks;
+  try { reeks = parseReeks(await lzvFetch(LZV_BASE + LZV_REEKS, LZV_CACHE_SECONDEN)); }
+  catch (e) { return json({ fout: "LZV Cup is nu niet bereikbaar.", detail: String(e && e.message || e) }, 502); }
+  const ploeg = (reeks.stand.find((s) => s.id === LZV_TEAM_ID) || {}).ploeg || "Heren Van Fatsoen";
+  const mijn = reeks.wedstrijden.filter((w) => w.thuisId === LZV_TEAM_ID || w.uitId === LZV_TEAM_ID);
+  // Wedstrijdbladen van gespeelde matchen (die veranderen zelden: 6 uur cache bij LZV-fetch)
+  await Promise.all(mijn.filter((w) => w.score && w.id).map(async (w) => {
+    try { w.spelers = parseWedstrijdblad(await lzvFetch(LZV_BASE + "/results/detail/" + w.id, 6 * 3600), ploeg); } catch (e) { w.spelers = null; }
+  }));
+  const stemmen = await hvdmUitStemmen(env.DB);
+  const grens = new Date(Date.now() - HVDM_NA_DAGEN * 86400000).toISOString().slice(0, 10);
+  mijn.forEach((w) => { const s = stemmen[w.datum]; if (w.score && s && w.datum <= grens) w.heer = s.heer; });
+  const res = new Response(JSON.stringify({ wedstrijden: mijn, ploeg, opgehaald: new Date().toISOString() }), {
+    headers: { "content-type": "application/json; charset=utf-8", "cache-control": "public, max-age=" + LZV_CACHE_SECONDEN },
+  });
+  if (cache) { const put = cache.put(cacheKey, res.clone()); if (ctx && ctx.waitUntil) ctx.waitUntil(put); else await put; }
+  return res;
+}
+
 async function competitie(request, ctx) {
   const cache = typeof caches !== "undefined" ? caches.default : null;
   const cacheKey = new Request(new URL("/api/competitie", request.url).toString());
@@ -236,6 +310,7 @@ export async function onRequest({ request, env, params, waitUntil }) {
 
   // Openbaar: klassement en wedstrijden van de hele reeks
   if (route === "competitie" && method === "GET") return competitie(request, { waitUntil });
+  if (route === "wedstrijden" && method === "GET") return onzeWedstrijden(request, env, { waitUntil });
 
   if (!env.STEM_WACHTWOORD) return json({ fout: "Het stemwachtwoord is nog niet ingesteld op de server." }, 503);
   if (!env.DB) return json({ fout: "De database is nog niet gekoppeld aan de site." }, 503);

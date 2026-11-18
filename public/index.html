@@ -931,8 +931,9 @@ a.sponsor-card:hover { border-color: var(--ink); }
   </div>
 </footer>
 
-<script src="spelers.js?v=202611161709"></script>
-<script src="wedstrijden.js?v=202611161709"></script>
+<script src="spelers.js?v=202611182356"></script>
+<script src="wedstrijden.js?v=202611182356"></script>
+<script src="lzv-sync.js?v=202611182356"></script>
 <script>
 (function () {
   // Spelerslijst opbouwen
@@ -946,6 +947,8 @@ a.sponsor-card:hover { border-color: var(--ink); }
 
   // Statistieken per speler, berekend uit de wedstrijdbladen in wedstrijden.js
   var STATS = {};
+  function computeStats() {
+  STATS = {};
   (window.WEDSTRIJDEN || []).forEach(function (m) {
     if (m.afgelast || !m.spelers) return;
     m.spelers.forEach(function (s) {
@@ -954,6 +957,8 @@ a.sponsor-card:hover { border-color: var(--ink); }
     });
     if (m.heer != null) { var hs = STATS[m.heer] || (STATS[m.heer] = { m: 0, g: 0, a: 0, h: 0 }); hs.h++; }
   });
+  }
+  computeStats();
   function statsOf(nr) { return STATS[nr] || { m: 0, g: 0, a: 0, h: 0 }; }
 
   function card(p) {
@@ -971,8 +976,11 @@ a.sponsor-card:hover { border-color: var(--ink); }
         })(statsOf(p.nummer))) +
       "</div></article>";
   }
-  document.getElementById("players").innerHTML = all.filter(function (p) { return !p.staf; }).map(card).join("");
-  document.getElementById("staff").innerHTML = all.filter(function (p) { return p.staf; }).map(card).join("");
+  function renderPlayers() {
+    document.getElementById("players").innerHTML = all.filter(function (p) { return !p.staf; }).map(card).join("");
+    document.getElementById("staff").innerHTML = all.filter(function (p) { return p.staf; }).map(card).join("");
+  }
+  renderPlayers();
 
   var seasonSort = "g", seasonTable = document.getElementById("season-stats");
   function renderSeason() {
@@ -1000,11 +1008,6 @@ a.sponsor-card:hover { border-color: var(--ink); }
   var MAANDEN = ["jan", "feb", "mrt", "apr", "mei", "jun", "jul", "aug", "sep", "okt", "nov", "dec"];
   var byNr = {};
   all.forEach(function (p) { if (!p.staf) byNr[p.nummer] = p; });
-  var matches = (window.WEDSTRIJDEN || []).slice().sort(function (a, b) {
-    if (!a.datum || !b.datum) return (a.datum ? 0 : 1) - (b.datum ? 0 : 1);
-    return (a.datum + (a.uur || "")).localeCompare(b.datum + (b.uur || ""));
-  });
-
   function teamHtml(name) { return name === US ? '<span class="us">' + esc(name) + "</span>" : "<span>" + esc(name) + "</span>"; }
   function bigScore(a, b) {
     function d(n) { return String(n).split("").map(function (c) { return "<span>" + c + "</span>"; }).join(""); }
@@ -1055,6 +1058,12 @@ a.sponsor-card:hover { border-color: var(--ink); }
     return '<div class="match-detail">' + hvdm + table + "</div>";
   }
 
+  function renderMatches() {
+  var matches = (window.WEDSTRIJDEN || []).slice().sort(function (a, b) {
+    if (!a.datum || !b.datum) return (a.datum ? 0 : 1) - (b.datum ? 0 : 1);
+    return (a.datum + (a.uur || "")).localeCompare(b.datum + (b.uur || ""));
+  });
+
   var played = matches.filter(function (m) { return m.score || m.afgelast; });
   var upcoming = matches.filter(function (m) { return !m.score && !m.afgelast; });
   var nextIdx = upcoming.findIndex(function (m) { return m.datum; });
@@ -1103,6 +1112,12 @@ a.sponsor-card:hover { border-color: var(--ink); }
     document.getElementById("tile-next").textContent = "Volgende: " + DAGEN[nd.getDay()] + " " + nd.getDate() + " " + MAANDEN[nd.getMonth()] + " tegen " + (n.thuis === US ? n.uit : n.thuis);
   }
 
+  }
+  renderMatches();
+
+  // Automatisch aangevuld met LZV-gegevens (lzv-sync.js): alles opnieuw tekenen
+  window.addEventListener("hvf:wedstrijden", function () { computeStats(); renderPlayers(); renderSeason(); renderMatches(); });
+
   // Eenvoudige navigatie tussen de delen van de site
   var views = document.querySelectorAll("[data-view]");
   var navs = document.querySelectorAll("[data-nav]");
@@ -1118,8 +1133,8 @@ a.sponsor-card:hover { border-color: var(--ink); }
   show();
 })();
 </script>
-<script src="stemmen.js?v=202611161709"></script>
-<script src="competitie.js?v=202611161709"></script>
-<script src="torrie.js?v=202611161709"></script>
+<script src="stemmen.js?v=202611182356"></script>
+<script src="competitie.js?v=202611182356"></script>
+<script src="torrie.js?v=202611182356"></script>
 </body>
 </html>

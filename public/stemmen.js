@@ -30,11 +30,15 @@
     try { return new Intl.DateTimeFormat("sv-SE", { timeZone: "Europe/Brussels" }).format(new Date()); }
     catch (e) { return new Date().toISOString().slice(0, 10); }
   }
-  var matches = (window.WEDSTRIJDEN || [])
-    .filter(function (m) { return m.datum && !m.afgelast && m.datum <= vandaag(); })
-    .sort(function (a, b) { return b.datum.localeCompare(a.datum); });
-  var matchByDate = {};
-  (window.WEDSTRIJDEN || []).forEach(function (m) { if (m.datum && !m.afgelast) matchByDate[m.datum] = m; });
+  var matches = [], matchByDate = {};
+  function buildMatches() {
+    matches = (window.WEDSTRIJDEN || [])
+      .filter(function (m) { return m.datum && !m.afgelast && m.datum <= vandaag(); })
+      .sort(function (a, b) { return b.datum.localeCompare(a.datum); });
+    matchByDate = {};
+    (window.WEDSTRIJDEN || []).forEach(function (m) { if (m.datum && !m.afgelast) matchByDate[m.datum] = m; });
+  }
+  buildMatches();
 
   function matchLabel(datum) {
     var m = matchByDate[datum], d = new Date(datum + "T12:00:00");
@@ -61,9 +65,15 @@
     gate.hidden = true; form.hidden = false;
   }
 
-  selMatch.innerHTML = matches.length
+  function fillMatchSelect() {
+    var keep = selMatch.value;
+    selMatch.innerHTML = matches.length
     ? matches.map(function (m) { return '<option value="' + m.datum + '">' + esc(matchLabel(m.datum)) + "</option>"; }).join("")
     : '<option value="">Nog geen gespeelde wedstrijden</option>';
+    if (keep && matchByDate[keep]) selMatch.value = keep;
+  }
+  fillMatchSelect();
+  window.addEventListener("hvf:wedstrijden", function () { buildMatches(); fillMatchSelect(); });
   selWho.innerHTML = '<option value="">Kies je naam</option>' +
     voters.map(function (p) { return '<option value="' + esc(key(p)) + '">' + esc(p.staf ? naamVan(p) + " (" + (p.rol || "staf") + ")" : "#" + p.nummer + " " + naamVan(p)) + "</option>"; }).join("");
   var rememberedWho = load("local", WHO_KEY);
