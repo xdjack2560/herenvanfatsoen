@@ -207,13 +207,18 @@ async function competitie(request, ctx) {
   let html;
   try {
     const r = await fetch(LZV_BASE + LZV_REEKS, { headers: { "user-agent": "herenvanfatsoen.be (ploegwebsite)" }, cf: { cacheTtl: LZV_CACHE_SECONDEN, cacheEverything: true } });
-    if (!r.ok) throw new Error("status " + r.status);
+    if (!r.ok) throw new Error("LZV antwoordde met status " + r.status);
     html = await r.text();
   } catch (e) {
-    return json({ fout: "LZV Cup is nu niet bereikbaar. Probeer het later opnieuw." }, 502);
+    return json({ fout: "LZV Cup is nu niet bereikbaar. Probeer het later opnieuw.", detail: String(e && e.message || e) }, 502);
   }
-  const data = parseReeks(html);
-  if (!data.stand.length && !data.wedstrijden.length) return json({ fout: "De gegevens van LZV Cup konden niet gelezen worden." }, 502);
+  let data;
+  try { data = parseReeks(html); } catch (e) {
+    return json({ fout: "De gegevens van LZV Cup konden niet gelezen worden.", detail: String(e && e.message || e) }, 502);
+  }
+  if (!data.stand.length && !data.wedstrijden.length) {
+    return json({ fout: "De gegevens van LZV Cup konden niet gelezen worden.", detail: "Lege pagina ontvangen (" + html.length + " tekens): " + html.slice(0, 200) }, 502);
+  }
   const res = new Response(JSON.stringify({ ...data, bron: LZV_BASE + LZV_REEKS, opgehaald: new Date().toISOString() }), {
     headers: { "content-type": "application/json; charset=utf-8", "cache-control": "public, max-age=" + LZV_CACHE_SECONDEN },
   });
