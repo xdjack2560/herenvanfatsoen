@@ -508,7 +508,8 @@ a.sponsor-card:hover { border-color: var(--ink); }
 .comp-stand tr.us td:first-child { box-shadow: inset 3px 0 0 var(--red); }
 .comp-stand .pos { width: 36px; }
 @media (max-width: 560px) { .comp-stand .hide-s { display: none; } .comp-table-wrap { padding: 4px 10px; } }
-.comp-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; margin-bottom: 40px; }
+.comp-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+.comp-stats-head { margin-top: 48px; }
 @media (max-width: 900px) { .comp-stats { grid-template-columns: 1fr; } }
 @media (max-width: 600px) { .comp-stats { grid-template-columns: 1fr; } }
 .stat-card { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 16px 16px 12px; display: flex; flex-direction: column; min-width: 0; }
@@ -706,12 +707,6 @@ a.sponsor-card:hover { border-color: var(--ink); }
       </div>
 
       <div class="comp-head">
-        <h2 class="list-head">Statistieken</h2>
-        <a class="back" href="https://www.lzvcup.be/results/stats/5/10/3A" target="_blank" rel="noopener">Alles op LZV Cup ↗</a>
-      </div>
-      <div class="comp-stats" id="comp-stats"><p class="note">Statistieken laden…</p></div>
-
-      <div class="comp-head">
         <h2 class="list-head">Wedstrijden</h2>
         <div class="comp-filters">
           <label class="field-label sr" for="comp-team">Ploeg</label>
@@ -723,6 +718,12 @@ a.sponsor-card:hover { border-color: var(--ink); }
         </div>
       </div>
       <div class="comp-matches" id="comp-matches"></div>
+
+      <div class="comp-head comp-stats-head">
+        <h2 class="list-head">Statistieken</h2>
+        <a class="back" href="https://www.lzvcup.be/results/stats/5/10/3A" target="_blank" rel="noopener">Alles op LZV Cup ↗</a>
+      </div>
+      <div class="comp-stats" id="comp-stats"><p class="note">Statistieken laden…</p></div>
     </div>
   </section>
 
@@ -955,9 +956,9 @@ a.sponsor-card:hover { border-color: var(--ink); }
   </div>
 </footer>
 
-<script src="spelers.js?v=202611251026"></script>
-<script src="wedstrijden.js?v=202611251026"></script>
-<script src="lzv-sync.js?v=202611251026"></script>
+<script src="spelers.js?v=202611251027"></script>
+<script src="wedstrijden.js?v=202611251027"></script>
+<script src="lzv-sync.js?v=202611251027"></script>
 <script>
 (function () {
   // Spelerslijst opbouwen
@@ -1157,8 +1158,8 @@ a.sponsor-card:hover { border-color: var(--ink); }
   show();
 })();
 </script>
-<script src="stemmen.js?v=202611251026"></script>
-<script src="competitie.js?v=202611251026"></script>
-<script src="torrie.js?v=202611251026"></script>
+<script src="stemmen.js?v=202611251027"></script>
+<script src="competitie.js?v=202611251027"></script>
+<script src="torrie.js?v=202611251027"></script>
 </body>
 </html>
