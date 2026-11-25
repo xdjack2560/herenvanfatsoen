@@ -156,6 +156,8 @@ function vandaag() {
 const LZV_BASE = "https://www.lzvcup.be";
 const LZV_REEKS = "/results/5/10/3A";
 const LZV_CACHE_SECONDEN = 900; // max. 1 keer per kwartier opnieuw ophalen
+// Verhoog bij elke codewijziging, zodat een nieuwe versie niet het oude antwoord uit de cache toont.
+const CACHE_VERSIE = "202611251033";
 
 const ENT = { "&nbsp;": " ", "&amp;": "&", "&#039;": "'", "&quot;": '"', "&lt;": "<", "&gt;": ">", "&eacute;": "é", "&euml;": "ë", "&egrave;": "è" };
 function txt(s) {
@@ -259,7 +261,7 @@ async function hvdmUitStemmen(db) {
 
 async function onzeWedstrijden(request, env, ctx) {
   const cache = typeof caches !== "undefined" ? caches.default : null;
-  const cacheKey = new Request(new URL("/api/wedstrijden", request.url).toString());
+  const cacheKey = new Request(new URL("/api/wedstrijden?v=" + CACHE_VERSIE, request.url).toString());
   if (cache) { const hit = await cache.match(cacheKey); if (hit) return hit; }
   let reeks;
   try { reeks = parseReeks(await lzvFetch(LZV_BASE + LZV_REEKS, LZV_CACHE_SECONDEN)); }
@@ -312,7 +314,7 @@ function verbergNamen(statistieken) {
 
 async function competitie(request, ctx) {
   const cache = typeof caches !== "undefined" ? caches.default : null;
-  const cacheKey = new Request(new URL("/api/competitie", request.url).toString());
+  const cacheKey = new Request(new URL("/api/competitie?v=" + CACHE_VERSIE, request.url).toString());
   if (cache) { const hit = await cache.match(cacheKey); if (hit) return hit; }
   let html;
   try {
