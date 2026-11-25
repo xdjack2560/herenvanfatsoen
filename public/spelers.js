@@ -14,7 +14,7 @@ window.SPELERS = [
   { nummer: 10, naam: "Maarten De Feyter", bijnaam: "Great White",  foto: "img/spelers/10.jpg", rol: "Teammanager" },
   { nummer: 11, naam: "Sterre Dieltjens",  bijnaam: "Blitzkrieg",   foto: "img/spelers/11.jpg" },
   { nummer: 17, naam: "Wies Goossens",     bijnaam: "Trapjack",     foto: "img/spelers/17.jpg" },
-  { nummer: 20, naam: null, verborgen: true, bijnaam: "", foto: "" }, // naam alleen achter het wachtwoord (zie /api/namen)
+  { nummer: 20, naam: "G.B.", bijnaam: "", foto: "" }, // openbaar alleen initialen; volledige naam achter het wachtwoord (zie /api/namen)
   { nummer: 22, naam: "Len Dieltiens",     bijnaam: "Baffinator",   foto: "img/spelers/22.jpg" },
   { nummer: 93, naam: "Pieter Dieltjens",  bijnaam: "The Kenyan",   foto: "img/spelers/93.jpg" },
   { nummer: 94, naam: "Alexander Keersmaekers", bijnaam: "",      foto: "" },
