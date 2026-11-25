@@ -204,6 +204,9 @@ function parseReeks(html) {
 // Spelers die liever niet met naam op de openbare site staan (rugnummer -> naam). Alleen zichtbaar achter het wachtwoord.
 const VERBORGEN_NAMEN = { 20: "Gilles Berghmans" };
 
+// Kortere weergavenamen voor spelers met een lange officiële naam op LZV.
+const KORTE_NAMEN = { "Mushinganya Lucas-Joseph Buhendwa Byamungu": "Lucas Buhendwa" };
+
 const LZV_TEAM_ID = 2730; // Heren Van Fatsoen op lzvcup.be
 const HVDM_NA_DAGEN = 2; // Heer van de Match wordt pas getoond zoveel dagen na de match (stemming afgelopen)
 
@@ -300,7 +303,10 @@ function parseStats(html) {
 function initialen(naam) { return naam.split(/\s+/).filter(Boolean).map((w) => w[0].toUpperCase() + ".").join(""); }
 function verbergNamen(statistieken) {
   const namen = Object.values(VERBORGEN_NAMEN);
-  statistieken.forEach((k) => k.lijst.forEach((r) => { if (namen.includes(r.speler)) { r.speler = initialen(r.speler); r.spelerId = null; } }));
+  statistieken.forEach((k) => k.lijst.forEach((r) => {
+    if (namen.includes(r.speler)) { r.speler = initialen(r.speler); r.spelerId = null; }
+    else if (KORTE_NAMEN[r.speler]) r.speler = KORTE_NAMEN[r.speler];
+  }));
   return statistieken;
 }
 

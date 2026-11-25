@@ -32,11 +32,10 @@
   var STAT_INFO = {
     "Topschutters": { sub: "Doelpunten", pad: "/goals", volgorde: 1 },
     "Assists": { sub: "Assists", pad: "/assists", volgorde: 2 },
-    "Tegengoals Keepers": { sub: "Gemiddeld aantal tegengoals per match", pad: "/keeper", volgorde: 3 },
-    "Fairplay": { sub: "Fairplayklassement van LZV Cup", pad: "", volgorde: 4 }
+    "Tegengoals Keepers": { sub: "Gemiddeld aantal tegengoals per match", pad: "/keeper", volgorde: 3 }
   };
   function renderStats() {
-    var el = $("comp-stats"), cards = (data.statistieken || []).slice();
+    var el = $("comp-stats"), cards = (data.statistieken || []).filter(function (k) { return k.titel !== "Fairplay"; });
     if (!cards.length) { el.innerHTML = '<p class="note">Geen statistieken beschikbaar.</p>'; return; }
     var base = (data.bron || "https://www.lzvcup.be/results/5/10/3A").replace("/results/", "/results/stats/");
     cards.sort(function (a, b) { return ((STAT_INFO[a.titel] || {}).volgorde || 9) - ((STAT_INFO[b.titel] || {}).volgorde || 9); });
