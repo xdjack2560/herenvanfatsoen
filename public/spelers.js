@@ -6,7 +6,7 @@ window.SPELERS = [
   { nummer: 1,  naam: "Louis Depreeuw",    bijnaam: "Mustafa",      foto: "img/spelers/1.jpg" },
   { nummer: 2,  naam: "Lucas Buhendwa",    bijnaam: "Caske",        foto: "img/spelers/2.jpg" },
   { nummer: 3,  naam: "Wolf Smets",        bijnaam: "El Luchador",  foto: "img/spelers/3.jpg" },
-  { nummer: 5,  naam: "Jack Goormans",     bijnaam: "The Giant",    foto: "img/spelers/5.jpg" },
+  { nummer: 5,  naam: "Jack Goormans",     bijnaam: "Vector",    foto: "img/spelers/5.jpg" },
   { nummer: 6,  naam: "Jonas Wuyts",       bijnaam: "Jokke Sins",   foto: "img/spelers/6.jpg" },
   { nummer: 7,  naam: "Maxime Seutin",     bijnaam: "Capi",         foto: "img/spelers/7.jpg" },
   { nummer: 8,  naam: "Hendrik Smets",     bijnaam: "Thrust King",  foto: "img/spelers/8.jpg" },
