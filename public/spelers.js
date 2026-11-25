@@ -1,3 +1,12 @@
+// In de Android-app geeft de app het ploegwachtwoord door, zodat spelers daar niet hoeven in te loggen.
+// (Het beheerwachtwoord voor de resultaten blijft altijd nodig.)
+try {
+  if (window.HVFApp && window.HVFApp.wachtwoord && !sessionStorage.getItem("hvf-stem-wachtwoord")) {
+    var hvfAppPw = window.HVFApp.wachtwoord();
+    if (hvfAppPw) sessionStorage.setItem("hvf-stem-wachtwoord", hvfAppPw);
+  }
+} catch (e) {}
+
 // Spelerslijst — pas hier namen, bijnamen en foto's aan.
 // foto: pad naar de foto in de map img/spelers/ (bv. "img/spelers/5.jpg"), of "" als er nog geen is.
 // staf: true zet iemand onder "Staf" in plaats van bij de spelers.
@@ -47,6 +56,9 @@ window.hvfLaadNamen = function (pw) {
   fetch("/api/namen", { headers: { "X-Wachtwoord": pw } }).then(function (r) { return r.ok ? r.json() : null; }).then(function (d) {
     if (!d || !d.namen) return;
     (window.SPELERS || []).forEach(function (p) { if (d.namen[p.nummer]) p.echteNaam = d.namen[p.nummer]; });
+    // Downloadlink voor de Android-app, alleen na het inloggen en niet in de app zelf.
+    var dl = document.getElementById("apk-dl"), dlLink = document.getElementById("apk-dl-link");
+    if (d.app && dl && dlLink && !window.HVFApp) { dlLink.href = d.app; dl.hidden = false; }
     try { window.dispatchEvent(new Event("hvf:namen")); } catch (e) {}
   }).catch(function () {});
 };

@@ -4,6 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Heren Van Fatsoen</title>
+<script>
+  // Gekozen thema (licht/donker) meteen toepassen, zonder flits. Zonder keuze volgt de site het systeem.
+  try { var t = localStorage.getItem("hvf-thema"); if (t === "dark" || t === "light") document.documentElement.setAttribute("data-theme", t); } catch (e) {}
+</script>
 <meta name="claude:viewport-fit-sides" content="cover">
 <meta name="description" content="Heren Van Fatsoen — zaalvoetbalploeg van Leuvense studenten, sinds 2026 in de LZV Cup, 3e Klasse A.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -83,7 +87,13 @@ body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-a
 }
 .crest { width: 46px; height: 46px; object-fit: contain; border-radius: 8px; background: #FFFFFF; padding: 3px; }
 .players-sub { font-family: var(--font-display); font-weight: 900; font-size: 1.75rem; text-transform: uppercase; margin: 48px 0 16px; }
-.topnav { display: flex; gap: 4px; flex-wrap: wrap; }
+.topnav { display: flex; gap: 4px; flex-wrap: wrap; margin-left: auto; }
+.theme-btn { flex: none; display: grid; place-items: center; width: 38px; height: 38px; border-radius: 8px; border: 0; cursor: pointer; background: rgba(255,255,255,0.14); color: var(--red-ink); }
+.theme-btn:hover { background: rgba(255,255,255,0.24); }
+.theme-btn:focus-visible { outline: 3px solid var(--red-ink); outline-offset: 2px; }
+.theme-btn .i-sun { display: none; }
+.theme-btn.dark .i-sun { display: block; }
+.theme-btn.dark .i-moon { display: none; }
 .topnav a {
   text-decoration: none; font-weight: 600; font-size: 0.875rem;
   padding: 6px 10px; border-radius: 6px; opacity: 0.85;
@@ -94,7 +104,9 @@ body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-a
   .topbar .wrap { flex-wrap: wrap; gap: 6px; padding-block: 8px 6px; }
   .wordmark { font-size: 1.25rem; }
   .crest { width: 38px; height: 38px; }
-  .topnav { width: 100%; flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; margin: 0 -6px; }
+  .topnav { width: 100%; flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; margin: 0 -6px; order: 3; }
+  .theme-btn { order: 2; width: 34px; height: 34px; margin-left: auto; }
+  .topnav { margin-left: 0; }
   .topnav::-webkit-scrollbar { display: none; }
   .topnav a { white-space: nowrap; }
 }
@@ -572,6 +584,10 @@ a.sponsor-card:hover { border-color: var(--ink); }
       <a href="#merch" data-nav="merch">Merch</a>
       <a href="#competitie" data-nav="competitie">Competitie</a>
     </nav>
+    <button type="button" class="theme-btn" id="theme-btn" aria-label="Donkere modus aan of uit">
+      <svg class="i-moon" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path fill="currentColor" d="M21 14.5A9 9 0 0 1 9.5 3a.5.5 0 0 0-.6-.6A10 10 0 1 0 21.6 15.1a.5.5 0 0 0-.6-.6z"/></svg>
+      <svg class="i-sun" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><circle cx="12" cy="12" r="4.5" fill="currentColor"/><g stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M4.9 19.1l1.8-1.8M17.3 6.7l1.8-1.8"/></g></svg>
+    </button>
   </div>
 </header>
 
@@ -785,6 +801,7 @@ a.sponsor-card:hover { border-color: var(--ink); }
         </div>
       </form>
 
+      <p class="admin-link apk-dl" id="apk-dl" hidden>📱 <a href="#" id="apk-dl-link">Android-app downloaden</a> · daarin hoef je niet meer in te loggen</p>
       <p class="admin-link"><a href="#resultaten">Resultaten bekijken (beheer)</a></p>
     </div>
   </section>
@@ -953,13 +970,13 @@ a.sponsor-card:hover { border-color: var(--ink); }
 <footer class="footer">
   <div class="wrap">
     <span>Heren Van Fatsoen · Leuven · sinds 2026</span>
-    <span class="footer-links"><a href="app/HerenVanFatsoen.apk" id="apk-link">📱 Android-app downloaden</a><a href="https://www.lzvcup.be/teams/detail/2730" target="_blank" rel="noopener">Wedstrijden &amp; stand op LZV Cup ↗</a></span>
+    <a href="https://www.lzvcup.be/teams/detail/2730" target="_blank" rel="noopener">Wedstrijden &amp; stand op LZV Cup ↗</a>
   </div>
 </footer>
 
-<script src="spelers.js?v=202611251051"></script>
-<script src="wedstrijden.js?v=202611251051"></script>
-<script src="lzv-sync.js?v=202611251051"></script>
+<script src="spelers.js?v=202611251208"></script>
+<script src="wedstrijden.js?v=202611251208"></script>
+<script src="lzv-sync.js?v=202611251208"></script>
 <script>
 (function () {
   // Spelerslijst opbouwen
@@ -1157,11 +1174,24 @@ a.sponsor-card:hover { border-color: var(--ink); }
   }
   window.addEventListener("hashchange", show);
   show();
-  if (/HVFApp\//.test(navigator.userAgent)) { var apk = document.getElementById("apk-link"); if (apk) apk.hidden = true; }
+
+  // Donkere modus: knop rechtsboven. Keuze wordt onthouden; zonder keuze volgt de site het systeem.
+  var themeBtn = document.getElementById("theme-btn");
+  var mq = window.matchMedia ? window.matchMedia("(prefers-color-scheme: dark)") : null;
+  function isDark() { var t = document.documentElement.getAttribute("data-theme"); return t ? t === "dark" : !!(mq && mq.matches); }
+  function syncThemeBtn() { var d = isDark(); themeBtn.classList.toggle("dark", d); themeBtn.setAttribute("aria-pressed", String(d)); themeBtn.title = d ? "Lichte modus" : "Donkere modus"; }
+  themeBtn.addEventListener("click", function () {
+    var next = isDark() ? "light" : "dark";
+    document.documentElement.setAttribute("data-theme", next);
+    try { localStorage.setItem("hvf-thema", next); } catch (e) {}
+    syncThemeBtn();
+  });
+  if (mq && mq.addEventListener) mq.addEventListener("change", syncThemeBtn);
+  syncThemeBtn();
 })();
 </script>
-<script src="stemmen.js?v=202611251051"></script>
-<script src="competitie.js?v=202611251051"></script>
-<script src="torrie.js?v=202611251051"></script>
+<script src="stemmen.js?v=202611251208"></script>
+<script src="competitie.js?v=202611251208"></script>
+<script src="torrie.js?v=202611251208"></script>
 </body>
 </html>

@@ -10,6 +10,7 @@ import android.os.Bundle;
 import android.view.View;
 import android.view.ViewGroup;
 import android.webkit.CookieManager;
+import android.webkit.JavascriptInterface;
 import android.webkit.ValueCallback;
 import android.webkit.WebChromeClient;
 import android.webkit.WebResourceError;
@@ -57,6 +58,14 @@ public class MainActivity extends Activity {
         s.setAllowFileAccess(false);
         s.setUserAgentString(s.getUserAgentString() + " HVFApp/1.0");
         CookieManager.getInstance().setAcceptCookie(true);
+        // Geeft het ploegwachtwoord aan de site (alleen herenvanfatsoen.be wordt in deze app geladen).
+        web.addJavascriptInterface(new Object() {
+            @JavascriptInterface public String wachtwoord() {
+                String url = web.getUrl();
+                return url != null && url.startsWith("https://") && Uri.parse(url).getHost() != null
+                        && Uri.parse(url).getHost().endsWith("herenvanfatsoen.be") ? BuildConfig.TEAM_WACHTWOORD : "";
+            }
+        }, "HVFApp");
 
         // Alleen "naar beneden trekken om te vernieuwen" als de pagina helemaal bovenaan staat.
         refresh.setOnChildScrollUpCallback((parent, child) -> web.getScrollY() > 0);
