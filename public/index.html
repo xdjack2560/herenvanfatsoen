@@ -555,6 +555,7 @@ a.sponsor-card:hover { border-color: var(--ink); }
 .footer { border-top: 1px solid var(--line); }
 .footer .wrap { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 12px; padding-block: 22px 28px; color: var(--muted); font-size: 0.875rem; }
 .footer a { text-decoration: none; font-weight: 600; color: var(--ink); }
+.footer-links { display: flex; gap: 8px 20px; flex-wrap: wrap; }
 </style>
 </head>
 <body>
@@ -952,13 +953,13 @@ a.sponsor-card:hover { border-color: var(--ink); }
 <footer class="footer">
   <div class="wrap">
     <span>Heren Van Fatsoen · Leuven · sinds 2026</span>
-    <a href="https://www.lzvcup.be/teams/detail/2730" target="_blank" rel="noopener">Wedstrijden &amp; stand op LZV Cup ↗</a>
+    <span class="footer-links"><a href="app/HerenVanFatsoen.apk" id="apk-link">📱 Android-app downloaden</a><a href="https://www.lzvcup.be/teams/detail/2730" target="_blank" rel="noopener">Wedstrijden &amp; stand op LZV Cup ↗</a></span>
   </div>
 </footer>
 
-<script src="spelers.js?v=202611251027"></script>
-<script src="wedstrijden.js?v=202611251027"></script>
-<script src="lzv-sync.js?v=202611251027"></script>
+<script src="spelers.js?v=202611251051"></script>
+<script src="wedstrijden.js?v=202611251051"></script>
+<script src="lzv-sync.js?v=202611251051"></script>
 <script>
 (function () {
   // Spelerslijst opbouwen
@@ -1156,10 +1157,11 @@ a.sponsor-card:hover { border-color: var(--ink); }
   }
   window.addEventListener("hashchange", show);
   show();
+  if (/HVFApp\//.test(navigator.userAgent)) { var apk = document.getElementById("apk-link"); if (apk) apk.hidden = true; }
 })();
 </script>
-<script src="stemmen.js?v=202611251027"></script>
-<script src="competitie.js?v=202611251027"></script>
-<script src="torrie.js?v=202611251027"></script>
+<script src="stemmen.js?v=202611251051"></script>
+<script src="competitie.js?v=202611251051"></script>
+<script src="torrie.js?v=202611251051"></script>
 </body>
 </html>

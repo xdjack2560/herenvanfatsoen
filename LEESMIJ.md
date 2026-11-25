@@ -24,3 +24,10 @@ De databasetabellen worden automatisch aangemaakt bij de eerste stem of torrie.
 
 ## Torries verwijderen
 Log eerst in op `/#resultaten` met het beheerwachtwoord. Ga daarna naar Ballon T'orrie: onder elke torrie staat dan een knop Verwijderen.
+
+## Android-app
+- `android/` bevat de app (toont herenvanfatsoen.be schermvullend). De gebouwde APK staat op de site: `/app/HerenVanFatsoen.apk`.
+- De app hoeft zelden een update: alles komt van de site.
+- Nieuwe versie bouwen: verhoog `versionCode` in `android/app/build.gradle`, zet `keystore.properties` + `hvf-release.jks`
+  (de ondertekeningssleutel, NIET in git) in `android/`, en voer `gradle assembleRelease` uit. Zonder dezelfde sleutel
+  kan een update niet over de bestaande app geïnstalleerd worden.
