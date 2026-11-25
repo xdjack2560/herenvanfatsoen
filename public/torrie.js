@@ -27,7 +27,7 @@
   function when(iso) { var d = new Date(iso); return isNaN(d) ? "" : d.getDate() + " " + MAANDEN[d.getMonth()] + " " + d.getFullYear(); }
   function keyOf(p) { return p.staf ? "staf:" + p.naam : String(p.nummer); }
   function personByKey(k) { for (var i = 0; i < everyone.length; i++) if (keyOf(everyone[i]) === k) return everyone[i]; return null; }
-  function first(n) { var p = byNr[n]; return p ? naamVan(p, true) : "#" + n; }
+  function first(n) { var p = byNr[n]; return p ? naamPriv(p, true) : "#" + n; }
 
   // Past de pagina niet bij dit script (oude versie uit de cache)? Dan niet vastlopen maar vragen om te vernieuwen.
   if (!$("torrie-me") || !$("torrie-nominees") || !$("torrie-cancel")) {
@@ -41,32 +41,39 @@
   var editing = null, kept = []; // torrie die bewerkt wordt + de foto's/video's die al bij die torrie horen
 
   /* ---------- Wie ben jij? ---------- */
-  meSel.innerHTML = '<option value="">Kies je naam</option>' + everyone.map(function (p) {
-    return '<option value="' + esc(keyOf(p)) + '">' + esc(p.staf ? naamVan(p) + " (" + (p.rol || "staf") + ")" : "#" + p.nummer + " " + naamVan(p)) + "</option>";
-  }).join("");
   function me() { return meSel.value ? personByKey(meSel.value) : null; }
   function syncMe() {
     var p = me();
     whoBox.classList.toggle("need", !p);
     $("torrie-me-note").textContent = p
-      ? "Je stemt en schrijft als " + naamVan(p) + ". Ben je dat niet? Kies dan je eigen naam."
+      ? "Je stemt en schrijft als " + naamPriv(p) + ". Ben je dat niet? Kies dan je eigen naam."
       : "Kies eerst je naam. Daarmee stem je en stuur je torries in, en je kan maar één keer per torrie stemmen.";
-    $("torrie-by").innerHTML = "Ingestuurd door: <strong>" + (p ? esc(naamVan(p)) : "kies eerst wie je bent (bovenaan)") + "</strong>";
+    $("torrie-by").innerHTML = "Ingestuurd door: <strong>" + (p ? esc(naamPriv(p)) : "kies eerst wie je bent (bovenaan)") + "</strong>";
   }
+  function fillPeople() {
+    var cur = meSel.value, checked = Array.prototype.map.call(document.querySelectorAll('input[name="nom"]:checked'), function (i) { return i.id; });
+  meSel.innerHTML = '<option value="">Kies je naam</option>' + everyone.map(function (p) {
+      return '<option value="' + esc(keyOf(p)) + '">' + esc(p.staf ? naamPriv(p) + " (" + (p.rol || "staf") + ")" : "#" + p.nummer + " " + naamPriv(p)) + "</option>";
+    }).join("");
+  $("torrie-nominees").innerHTML = players.map(function (p) {
+      var img = p.foto ? '<img src="' + esc(p.foto) + '" alt="" loading="lazy">' : '<span class="nom-ghost">' + p.nummer + "</span>";
+      return '<label class="nom" title="' + esc(echteNaam(p)) + '"><input type="checkbox" name="nom" id="nom-' + p.nummer + '" value="' + p.nummer + '">' + img + '<span class="nm">' + esc(naamPriv(p, true)) + "</span></label>";
+    }).join("");
+    if (cur) meSel.value = cur;
+    checked.forEach(function (id) { var i = document.getElementById(id); if (i) i.checked = true; });
+  }
+  fillPeople();
+  window.addEventListener("hvf:namen", function () { fillPeople(); syncMe(); render(); });
   var saved = load("local", WHO_KEY);
   if (saved && personByKey(saved)) meSel.value = saved;
   meSel.addEventListener("change", function () {
     store("local", WHO_KEY, meSel.value || null); syncMe();
-    if (editing && (!me() || editing.door !== me().naam)) resetForm();
+    if (editing && (!me() || editing.door !== echteNaam(me()))) resetForm();
     loadTorries();
   });
   syncMe();
 
   /* ---------- Formulier ---------- */
-  $("torrie-nominees").innerHTML = players.map(function (p) {
-    var img = p.foto ? '<img src="' + esc(p.foto) + '" alt="" loading="lazy">' : '<span class="nom-ghost">' + p.nummer + "</span>";
-    return '<label class="nom" title="' + esc(p.naam) + '"><input type="checkbox" name="nom" id="nom-' + p.nummer + '" value="' + p.nummer + '">' + img + '<span class="nm">' + esc(naamVan(p, true)) + "</span></label>";
-  }).join("");
   try { if (window.matchMedia("(min-width: 900px)").matches) compose.open = true; } catch (e) {}
 
   var area = $("torrie-text"), counter = $("torrie-count");
@@ -176,7 +183,7 @@
       msg(out, ed ? "Wijzigingen opslaan…" : "Torrie wordt geplaatst…");
       return api(ed ? "/api/torries/" + ed.id : "/api/torries", {
         method: ed ? "PUT" : "POST", headers: { "content-type": "application/json" },
-        body: JSON.stringify({ wachtwoord: load("session", PW_KEY) || "", titel: titel, genomineerden: noms, verhaal: verhaal, door: p.naam, media: kept.concat(nieuw) })
+        body: JSON.stringify({ wachtwoord: load("session", PW_KEY) || "", titel: titel, genomineerden: noms, verhaal: verhaal, door: echteNaam(p), media: kept.concat(nieuw) })
       });
     }).then(function (d) {
       if (ed) {
@@ -229,7 +236,7 @@
           var p = byNr[n];
           return "<span>" + (p && p.foto ? '<img src="' + esc(p.foto) + '" alt="" loading="lazy">' : n) + "</span>";
         }).join("");
-        var names = noms.map(function (n) { var p = byNr[n]; return esc(p ? naamVan(p) : "#" + n) + (p && p.bijnaam ? ' <em>“' + esc(p.bijnaam) + "”</em>" : ""); }).join(", ");
+        var names = noms.map(function (n) { var p = byNr[n]; return esc(p ? naamPriv(p) : "#" + n) + (p && p.bijnaam ? ' <em>“' + esc(p.bijnaam) + "”</em>" : ""); }).join(", ");
         var dis = canVote ? "" : ' disabled title="Kies bovenaan eerst wie je bent"';
         return '<article class="torrie" data-id="' + t.id + '">' +
           '<header class="torrie-head"><div class="torrie-photos">' + photos + "</div>" +
@@ -243,7 +250,7 @@
             '<button type="button" class="tvote down' + (t.mijn < 0 ? " on" : "") + '" data-vote="-1" aria-label="Downvote" aria-pressed="' + (t.mijn < 0) + '"' + dis + '>▼ ' + (t.down || 0) + "</button>" +
           "</div>" +
           '<div class="torrie-actions">' +
-            (mine && t.door === mine.naam ? '<button class="btn ghost small" type="button" data-edit="' + t.id + '">Bewerken</button>' : "") +
+            (mine && t.door === echteNaam(mine) ? '<button class="btn ghost small" type="button" data-edit="' + t.id + '">Bewerken</button>' : "") +
             (isAdmin ? '<button class="btn ghost small" type="button" data-delete="' + t.id + '">Verwijderen</button>' : "") +
           "</div></div></article>";
       }).join("");
@@ -260,7 +267,7 @@
     stand.innerHTML = ranked.length
       ? ranked.map(function (n, i) {
           var p = byNr[n];
-          return "<li" + (i === 0 ? ' class="first"' : "") + '><span class="stand-name">' + esc(p ? naamVan(p) : "#" + n) + '</span><span class="stand-n"><b>' + agg[n].pts + " pt</b> · " + agg[n].n + " torrie" + (agg[n].n === 1 ? "" : "s") + "</span></li>";
+          return "<li" + (i === 0 ? ' class="first"' : "") + '><span class="stand-name">' + esc(p ? naamPriv(p) : "#" + n) + '</span><span class="stand-n"><b>' + agg[n].pts + " pt</b> · " + agg[n].n + " torrie" + (agg[n].n === 1 ? "" : "s") + "</span></li>";
         }).join("")
       : '<li class="empty">Nog geen nominaties.</li>';
 
@@ -287,7 +294,7 @@
     if (!pw) { msg(out, "Vul het wachtwoord in.", "err"); return; }
     btn.disabled = true; msg(out, "Bezig met controleren…");
     api("/api/login", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ wachtwoord: pw }) })
-      .then(function () { store("session", PW_KEY, pw); msg(out, ""); return loadTorries(); })
+      .then(function () { store("session", PW_KEY, pw); msg(out, ""); hvfLaadNamen(pw); return loadTorries(); })
       .catch(function (err) { msg(out, err.message, "err"); })
       .then(function () { btn.disabled = false; });
   });

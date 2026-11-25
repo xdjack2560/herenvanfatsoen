@@ -532,6 +532,8 @@ a.sponsor-card:hover { border-color: var(--ink); }
   .comp-row .z { grid-column: 2 / -1; text-align: center; margin-top: -4px; }
 }
 
+.scramble { font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace; font-weight: 700; color: var(--red); letter-spacing: 0.02em; white-space: nowrap; text-transform: none; font-size: 0.92em; }
+
 /* Footer */
 .footer { border-top: 1px solid var(--line); }
 .footer .wrap { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 12px; padding-block: 22px 28px; color: var(--muted); font-size: 0.875rem; }
@@ -931,9 +933,9 @@ a.sponsor-card:hover { border-color: var(--ink); }
   </div>
 </footer>
 
-<script src="spelers.js?v=202611251009"></script>
-<script src="wedstrijden.js?v=202611251009"></script>
-<script src="lzv-sync.js?v=202611251009"></script>
+<script src="spelers.js?v=202611251013"></script>
+<script src="wedstrijden.js?v=202611251013"></script>
+<script src="lzv-sync.js?v=202611251013"></script>
 <script>
 (function () {
   // Spelerslijst opbouwen
@@ -963,7 +965,7 @@ a.sponsor-card:hover { border-color: var(--ink); }
 
   function card(p) {
     var photo = p.foto
-      ? '<img src="' + esc(p.foto) + '" alt="' + esc(p.naam) + '" loading="lazy">'
+      ? '<img src="' + esc(p.foto) + '" alt="' + esc(p.naam || "Speler #" + p.nummer) + '" loading="lazy">'
       : '<div class="ghost" aria-hidden="true">' + p.nummer + "</div>";
     return '<article class="player">' +
       '<div class="player-photo">' + photo + scoreTiles(p.nummer) + "</div>" +
@@ -1038,7 +1040,7 @@ a.sponsor-card:hover { border-color: var(--ink); }
   function detailHtml(m) {
     var h = byNr[m.heer];
     var hvdm = h
-      ? '<div class="hvdm">' + (h.foto ? '<img src="' + esc(h.foto) + '" alt="' + esc(h.naam) + '" loading="lazy">' : '<div class="hvdm-ghost">' + h.nummer + "</div>") +
+      ? '<div class="hvdm">' + (h.foto ? '<img src="' + esc(h.foto) + '" alt="' + esc(h.naam || "Speler #" + h.nummer) + '" loading="lazy">' : '<div class="hvdm-ghost">' + h.nummer + "</div>") +
         '<div><div class="hvdm-label">Heer van de Match</div><div class="hvdm-name">' + esc(naamVan(h, true)) + "</div>" +
         (h.bijnaam ? '<div class="hvdm-nick">“' + esc(h.bijnaam) + "” · #" + h.nummer + "</div>" : '<div class="hvdm-nick">#' + h.nummer + "</div>") + "</div></div>"
       : "<div></div>";
@@ -1133,8 +1135,9 @@ a.sponsor-card:hover { border-color: var(--ink); }
   show();
 })();
 </script>
-<script src="stemmen.js?v=202611251009"></script>
-<script src="competitie.js?v=202611251009"></script>
-<script src="torrie.js?v=202611251009"></script>
+<script src="scramble.js?v=202611251013"></script>
+<script src="stemmen.js?v=202611251013"></script>
+<script src="competitie.js?v=202611251013"></script>
+<script src="torrie.js?v=202611251013"></script>
 </body>
 </html>

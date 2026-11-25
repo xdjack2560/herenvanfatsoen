@@ -201,6 +201,9 @@ function parseReeks(html) {
   return { stand, wedstrijden: uniek };
 }
 
+// Spelers die liever niet met naam op de openbare site staan (rugnummer -> naam). Alleen zichtbaar achter het wachtwoord.
+const VERBORGEN_NAMEN = { 20: "Gilles Berghmans" };
+
 const LZV_TEAM_ID = 2730; // Heren Van Fatsoen op lzvcup.be
 const HVDM_NA_DAGEN = 2; // Heer van de Match wordt pas getoond zoveel dagen na de match (stemming afgelopen)
 
@@ -263,6 +266,7 @@ async function onzeWedstrijden(request, env, ctx) {
   // Wedstrijdbladen van gespeelde matchen (die veranderen zelden: 6 uur cache bij LZV-fetch)
   await Promise.all(mijn.filter((w) => w.score && w.id).map(async (w) => {
     try { w.spelers = parseWedstrijdblad(await lzvFetch(LZV_BASE + "/results/detail/" + w.id, 6 * 3600), ploeg); } catch (e) { w.spelers = null; }
+    if (w.spelers) w.spelers.forEach((s) => { if (VERBORGEN_NAMEN[s.nr] || Object.values(VERBORGEN_NAMEN).includes(s.naam)) delete s.naam; });
   }));
   const stemmen = await hvdmUitStemmen(env.DB);
   const grens = new Date(Date.now() - HVDM_NA_DAGEN * 86400000).toISOString().slice(0, 10);
@@ -311,6 +315,14 @@ export async function onRequest({ request, env, params, waitUntil }) {
   // Openbaar: klassement en wedstrijden van de hele reeks
   if (route === "competitie" && method === "GET") return competitie(request, { waitUntil });
   if (route === "wedstrijden" && method === "GET") return onzeWedstrijden(request, env, { waitUntil });
+
+  // Verborgen namen, alleen met het ploeg- of beheerwachtwoord
+  if (route === "namen" && method === "GET") {
+    const pw = request.headers.get("X-Wachtwoord");
+    const ok = (await sameSecret(pw, env.STEM_WACHTWOORD)) || (env.BEHEER_WACHTWOORD && (await sameSecret(pw, env.BEHEER_WACHTWOORD)));
+    if (!ok) return json({ fout: "Dat wachtwoord klopt niet." }, 401);
+    return json({ namen: VERBORGEN_NAMEN });
+  }
 
   if (!env.STEM_WACHTWOORD) return json({ fout: "Het stemwachtwoord is nog niet ingesteld op de server." }, 503);
   if (!env.DB) return json({ fout: "De database is nog niet gekoppeld aan de site." }, 503);

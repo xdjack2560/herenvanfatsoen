@@ -14,7 +14,7 @@ window.SPELERS = [
   { nummer: 10, naam: "Maarten De Feyter", bijnaam: "Great White",  foto: "img/spelers/10.jpg", rol: "Teammanager" },
   { nummer: 11, naam: "Sterre Dieltjens",  bijnaam: "Blitzkrieg",   foto: "img/spelers/11.jpg" },
   { nummer: 17, naam: "Wies Goossens",     bijnaam: "Trapjack",     foto: "img/spelers/17.jpg" },
-  { nummer: 20, naam: "Gilles Berghmans",  bijnaam: "",             foto: "" },
+  { nummer: 20, naam: null, verborgen: true, bijnaam: "", foto: "" }, // naam alleen achter het wachtwoord (zie /api/namen)
   { nummer: 22, naam: "Len Dieltiens",     bijnaam: "Baffinator",   foto: "img/spelers/22.jpg" },
   { nummer: 93, naam: "Pieter Dieltjens",  bijnaam: "The Kenyan",   foto: "img/spelers/93.jpg" },
   { nummer: 94, naam: "Alexander Keersmaekers", bijnaam: "",      foto: "" },
@@ -23,13 +23,30 @@ window.SPELERS = [
 ];
 
 // Naam zoals hij op de site getoond wordt (met ✝ als kruis: true). kort = alleen voornaam.
-window.naamVan = function (p, kort) {
+// Verborgen namen tonen als bewegende tekens (scramble.js); achter het wachtwoord de echte naam (prive = true).
+window.HVF_VERBORGEN = "\u2591\u2591\u2591\u2591\u2591\u2591";
+window.naamVan = function (p, kort, prive) {
   if (!p) return "";
-  var n = kort ? p.naam.split(" ")[0] : p.naam;
+  var naam = (prive && p.echteNaam) || p.naam;
+  if (!naam) return window.HVF_VERBORGEN;
+  var n = kort ? naam.split(" ")[0] : naam;
   return p.kruis ? n + " \u271D" : n;
 };
 // Zelfde, maar voor een naam die als tekst opgeslagen is (bv. "ingestuurd door").
 window.naamVanTekst = function (naam) {
   var p = (window.SPELERS || []).filter(function (x) { return x.naam === naam; })[0];
   return p ? window.naamVan(p) : naam;
+};
+
+// Naam voor pagina's achter het wachtwoord.
+window.naamPriv = function (p, kort) { return window.naamVan(p, kort, true); };
+window.echteNaam = function (p) { return p ? (p.echteNaam || p.naam || "") : ""; };
+// Haalt na het inloggen de verborgen namen op en laat de wachtwoordpagina's opnieuw tekenen.
+window.hvfLaadNamen = function (pw) {
+  if (!pw || !window.fetch) return;
+  fetch("/api/namen", { headers: { "X-Wachtwoord": pw } }).then(function (r) { return r.ok ? r.json() : null; }).then(function (d) {
+    if (!d || !d.namen) return;
+    (window.SPELERS || []).forEach(function (p) { if (d.namen[p.nummer]) p.echteNaam = d.namen[p.nummer]; });
+    try { window.dispatchEvent(new Event("hvf:namen")); } catch (e) {}
+  }).catch(function () {});
 };
