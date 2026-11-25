@@ -278,6 +278,32 @@ async function onzeWedstrijden(request, env, ctx) {
   return res;
 }
 
+// Statistieken van de reeks (Fairplay, Topschutters, Assists, Tegengoals Keepers): kaarten met top 10.
+function parseStats(html) {
+  const out = [];
+  const cards = html.split(/<div class="card-title">/).slice(1);
+  for (const c of cards) {
+    const titel = txt(c.slice(0, c.indexOf("</div>")));
+    const rows = [...c.matchAll(/<div class="stats(?:first|row) row no-gutters">([\s\S]*?)<div class="col-2 statscount">([\s\S]*?)<\/div>/g)];
+    const lijst = rows.map((r, i) => {
+      const sp = r[1].match(/<span class="statsplayer"><a href="\/player\/(\d+)">([\s\S]*?)<\/a>/);
+      const tm = r[1].match(/<span class="statsteam"><a href="\/teams\/detail\/(\d+)">([\s\S]*?)<\/a>/);
+      const v = txt(r[2]);
+      return { pos: i + 1, speler: sp ? txt(sp[2]) : "", spelerId: sp ? +sp[1] : null, ploeg: tm ? txt(tm[2]) : "", ploegId: tm ? +tm[1] : null, waarde: v };
+    }).filter((x) => x.speler);
+    if (titel && lijst.length) out.push({ titel, lijst });
+  }
+  return out;
+}
+
+// Openbaar: verborgen spelers alleen met initialen (bv. "G.B.").
+function initialen(naam) { return naam.split(/\s+/).filter(Boolean).map((w) => w[0].toUpperCase() + ".").join(""); }
+function verbergNamen(statistieken) {
+  const namen = Object.values(VERBORGEN_NAMEN);
+  statistieken.forEach((k) => k.lijst.forEach((r) => { if (namen.includes(r.speler)) { r.speler = initialen(r.speler); r.spelerId = null; } }));
+  return statistieken;
+}
+
 async function competitie(request, ctx) {
   const cache = typeof caches !== "undefined" ? caches.default : null;
   const cacheKey = new Request(new URL("/api/competitie", request.url).toString());
@@ -297,7 +323,9 @@ async function competitie(request, ctx) {
   if (!data.stand.length && !data.wedstrijden.length) {
     return json({ fout: "De gegevens van LZV Cup konden niet gelezen worden.", detail: "Lege pagina ontvangen (" + html.length + " tekens): " + html.slice(0, 200) }, 502);
   }
-  const res = new Response(JSON.stringify({ ...data, bron: LZV_BASE + LZV_REEKS, opgehaald: new Date().toISOString() }), {
+  let statistieken = [];
+  try { statistieken = verbergNamen(parseStats(await lzvFetch(LZV_BASE + LZV_REEKS.replace("/results/", "/results/stats/"), LZV_CACHE_SECONDEN))); } catch (e) { /* zonder statistieken verder */ }
+  const res = new Response(JSON.stringify({ ...data, statistieken, bron: LZV_BASE + LZV_REEKS, opgehaald: new Date().toISOString() }), {
     headers: { "content-type": "application/json; charset=utf-8", "cache-control": "public, max-age=" + LZV_CACHE_SECONDEN },
   });
   if (cache) { const put = cache.put(cacheKey, res.clone()); if (ctx && ctx.waitUntil) ctx.waitUntil(put); else await put; }

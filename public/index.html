@@ -508,6 +508,24 @@ a.sponsor-card:hover { border-color: var(--ink); }
 .comp-stand tr.us td:first-child { box-shadow: inset 3px 0 0 var(--red); }
 .comp-stand .pos { width: 36px; }
 @media (max-width: 560px) { .comp-stand .hide-s { display: none; } .comp-table-wrap { padding: 4px 10px; } }
+.comp-stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; margin-bottom: 40px; }
+@media (max-width: 1100px) { .comp-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 600px) { .comp-stats { grid-template-columns: 1fr; } }
+.stat-card { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 16px 16px 12px; display: flex; flex-direction: column; min-width: 0; }
+.stat-card h3 { font-size: 1.4rem; font-weight: 900; margin: 0 0 4px; }
+.stat-card .stat-sub { font-size: 0.75rem; color: var(--muted); margin: 0 0 10px; }
+.stat-list { list-style: none; margin: 0; padding: 0; display: grid; }
+.stat-list li { display: grid; grid-template-columns: 26px minmax(0, 1fr) auto; gap: 8px; align-items: baseline; padding: 7px 0; border-top: 1px solid var(--line); }
+.stat-list li:first-child { border-top: 0; }
+.stat-list .r { color: var(--muted); font-size: 0.8125rem; font-variant-numeric: tabular-nums; }
+.stat-list li:first-child .r { color: var(--red); font-weight: 800; }
+.stat-list .w { min-width: 0; display: grid; line-height: 1.25; }
+.stat-list .n { font-weight: 600; overflow-wrap: anywhere; }
+.stat-list .p { font-size: 0.75rem; color: var(--muted); }
+.stat-list .v { font-family: var(--font-display); font-weight: 900; font-size: 1.25rem; font-variant-numeric: tabular-nums; }
+.stat-list li.us .n, .stat-list li.us .p { color: var(--red); }
+.stat-card .more { margin-top: auto; padding-top: 10px; font-size: 0.8125rem; font-weight: 600; color: var(--muted); text-decoration: none; }
+.stat-card .more:hover { color: var(--ink); }
 .comp-head { display: flex; justify-content: space-between; align-items: center; gap: 12px 20px; flex-wrap: wrap; margin-bottom: 14px; }
 .comp-head .list-head { margin: 0; }
 .comp-filters { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
@@ -686,6 +704,12 @@ a.sponsor-card:hover { border-color: var(--ink); }
           <tbody><tr><td colspan="10" class="zero">Klassement laden…</td></tr></tbody>
         </table>
       </div>
+
+      <div class="comp-head">
+        <h2 class="list-head">Statistieken</h2>
+        <a class="back" href="https://www.lzvcup.be/results/stats/5/10/3A" target="_blank" rel="noopener">Alles op LZV Cup ↗</a>
+      </div>
+      <div class="comp-stats" id="comp-stats"><p class="note">Statistieken laden…</p></div>
 
       <div class="comp-head">
         <h2 class="list-head">Wedstrijden</h2>
@@ -931,9 +955,9 @@ a.sponsor-card:hover { border-color: var(--ink); }
   </div>
 </footer>
 
-<script src="spelers.js?v=202611251015"></script>
-<script src="wedstrijden.js?v=202611251015"></script>
-<script src="lzv-sync.js?v=202611251015"></script>
+<script src="spelers.js?v=202611251024"></script>
+<script src="wedstrijden.js?v=202611251024"></script>
+<script src="lzv-sync.js?v=202611251024"></script>
 <script>
 (function () {
   // Spelerslijst opbouwen
@@ -1133,8 +1157,8 @@ a.sponsor-card:hover { border-color: var(--ink); }
   show();
 })();
 </script>
-<script src="stemmen.js?v=202611251015"></script>
-<script src="competitie.js?v=202611251015"></script>
-<script src="torrie.js?v=202611251015"></script>
+<script src="stemmen.js?v=202611251024"></script>
+<script src="competitie.js?v=202611251024"></script>
+<script src="torrie.js?v=202611251024"></script>
 </body>
 </html>

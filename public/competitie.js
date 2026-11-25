@@ -29,6 +29,30 @@
     if (us && $("tile-stand")) $("tile-stand").textContent = us.pos + "e van " + rows.length + " met " + us.punten + " punten";
   }
 
+  var STAT_INFO = {
+    "Topschutters": { sub: "Doelpunten", pad: "/goals", volgorde: 1 },
+    "Assists": { sub: "Assists", pad: "/assists", volgorde: 2 },
+    "Tegengoals Keepers": { sub: "Gemiddeld aantal tegengoals per match", pad: "/keeper", volgorde: 3 },
+    "Fairplay": { sub: "Fairplayklassement van LZV Cup", pad: "", volgorde: 4 }
+  };
+  function renderStats() {
+    var el = $("comp-stats"), cards = (data.statistieken || []).slice();
+    if (!cards.length) { el.innerHTML = '<p class="note">Geen statistieken beschikbaar.</p>'; return; }
+    var base = (data.bron || "https://www.lzvcup.be/results/5/10/3A").replace("/results/", "/results/stats/");
+    cards.sort(function (a, b) { return ((STAT_INFO[a.titel] || {}).volgorde || 9) - ((STAT_INFO[b.titel] || {}).volgorde || 9); });
+    el.innerHTML = cards.map(function (k) {
+      var info = STAT_INFO[k.titel] || { sub: "", pad: "" };
+      return '<article class="stat-card"><h3>' + esc(k.titel) + "</h3>" + (info.sub ? '<p class="stat-sub">' + esc(info.sub) + "</p>" : "") +
+        '<ol class="stat-list">' + k.lijst.map(function (r) {
+          return '<li class="' + (r.ploegId === US_ID ? "us" : "") + '"><span class="r">' + (r.pos === 1 ? "🏆" : r.pos + ".") + "</span>" +
+            '<span class="w"><span class="n">' + esc(r.speler) + '</span><span class="p">' + esc(r.ploeg) + "</span></span>" +
+            '<span class="v">' + esc(r.waarde) + "</span></li>";
+        }).join("") + "</ol>" +
+        (info.pad ? '<a class="more" href="' + esc(base + info.pad) + '" target="_blank" rel="noopener">Volledige lijst ↗</a>' : "") +
+        "</article>";
+    }).join("");
+  }
+
   function renderMatches() {
     var today = vandaag();
     var list = (data.wedstrijden || []).filter(function (w) {
@@ -82,7 +106,7 @@
 
   function show(d, snapshot) {
     data = d;
-    fillTeams(); renderStand(); renderMatches();
+    fillTeams(); renderStand(); renderStats(); renderMatches();
     var t = new Date(d.opgehaald);
     $("comp-updated").textContent = isNaN(t) ? "" :
       (snapshot ? "Momentopname van " : "Bijgewerkt ") + t.toLocaleString("nl-BE", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) + ".";
