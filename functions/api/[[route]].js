@@ -205,8 +205,6 @@ function parseReeks(html) {
 
 // Spelers die liever niet met naam op de openbare site staan (rugnummer -> naam). Alleen zichtbaar achter het wachtwoord.
 const VERBORGEN_NAMEN = { 20: "Gilles Berghmans" };
-// De Android-app logt automatisch in; daarom staat de download alleen achter het wachtwoord, op een onvoorspelbaar adres.
-const APP_DOWNLOAD = "/app/39af7645e45f10f3/HerenVanFatsoen.apk";
 
 // Kortere weergavenamen voor spelers met een lange officiële naam op LZV.
 const KORTE_NAMEN = { "Mushinganya Lucas-Joseph Buhendwa Byamungu": "Lucas Buhendwa" };
@@ -359,7 +357,7 @@ export async function onRequest({ request, env, params, waitUntil }) {
     const pw = request.headers.get("X-Wachtwoord");
     const ok = (await sameSecret(pw, env.STEM_WACHTWOORD)) || (env.BEHEER_WACHTWOORD && (await sameSecret(pw, env.BEHEER_WACHTWOORD)));
     if (!ok) return json({ fout: "Dat wachtwoord klopt niet." }, 401);
-    return json({ namen: VERBORGEN_NAMEN, app: APP_DOWNLOAD });
+    return json({ namen: VERBORGEN_NAMEN });
   }
 
   if (!env.STEM_WACHTWOORD) return json({ fout: "Het stemwachtwoord is nog niet ingesteld op de server." }, 503);

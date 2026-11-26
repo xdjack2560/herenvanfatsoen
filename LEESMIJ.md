@@ -26,11 +26,10 @@ De databasetabellen worden automatisch aangemaakt bij de eerste stem of torrie.
 Log eerst in op `/#resultaten` met het beheerwachtwoord. Ga daarna naar Ballon T'orrie: onder elke torrie staat dan een knop Verwijderen.
 
 ## Android-app
-- `android/` bevat de app (toont herenvanfatsoen.be schermvullend). De gebouwde APK staat op de site onder `/app/<code>/HerenVanFatsoen.apk`.
+- `android/` bevat de app (toont herenvanfatsoen.be schermvullend). De APK wordt niet via de site verspreid, maar rechtstreeks gedeeld (bv. in de groepschat).
 - De app hoeft zelden een update: alles komt van de site.
 - De app logt automatisch in met het ploegwachtwoord uit `android/app-secrets.properties` (`teamWachtwoord=...`, NIET in git).
   Verandert het ploegwachtwoord, dan moet er een nieuwe app-versie gebouwd worden.
-- De download staat alleen achter het wachtwoord (pad in `APP_DOWNLOAD` in de servercode).
 - Nieuwe versie bouwen: verhoog `versionCode` in `android/app/build.gradle`, zet `keystore.properties` + `hvf-release.jks`
   (de ondertekeningssleutel, NIET in git) in `android/`, en voer `gradle assembleRelease` uit. Zonder dezelfde sleutel
   kan een update niet over de bestaande app geïnstalleerd worden.

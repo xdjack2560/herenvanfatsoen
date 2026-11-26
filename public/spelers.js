@@ -56,9 +56,6 @@ window.hvfLaadNamen = function (pw) {
   fetch("/api/namen", { headers: { "X-Wachtwoord": pw } }).then(function (r) { return r.ok ? r.json() : null; }).then(function (d) {
     if (!d || !d.namen) return;
     (window.SPELERS || []).forEach(function (p) { if (d.namen[p.nummer]) p.echteNaam = d.namen[p.nummer]; });
-    // Downloadlink voor de Android-app, alleen na het inloggen en niet in de app zelf.
-    var dl = document.getElementById("apk-dl"), dlLink = document.getElementById("apk-dl-link");
-    if (d.app && dl && dlLink && !window.HVFApp) { dlLink.href = d.app; dl.hidden = false; }
     try { window.dispatchEvent(new Event("hvf:namen")); } catch (e) {}
   }).catch(function () {});
 };
